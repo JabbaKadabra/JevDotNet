@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AssemblyName>JevDotNet</AssemblyName>
+    <RootNamespace>JevDotNet</RootNamespace>
+    <Version>1.0.0</Version>
+    <Authors>Daniel</Authors>
+    <Description>A .NET Standard 2.0 client library for the Jev (TypeSafe System One) API.</Description>
+    <PackageId>JevDotNet</PackageId>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/JabbaKadabra/JevDotNet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>jev;typesafe;llm;classification;dotnet</PackageTags>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
