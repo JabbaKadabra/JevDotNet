@@ -75,6 +75,12 @@ namespace JevDotNet
             AnswerReader.RequireType(answerObject, "score", Id);
 
             var score = AnswerReader.RequireNumber(answerObject, "score", Id);
+            AnswerReader.RequireRange(
+                score,
+                0,
+                _levels.Length - 1,
+                "The 'score' value",
+                Id);
             var confidence = AnswerReader.RequireUnitInterval(
                 AnswerReader.RequireNumber(answerObject, "confidence", Id),
                 "The 'confidence' value",

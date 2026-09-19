@@ -47,6 +47,11 @@ namespace JevDotNet.Internal
 
             try
             {
+                if (value is JsonElement element)
+                {
+                    return CountJsonElement(element);
+                }
+
                 if (value is JsonNode node)
                 {
                     return CountNode(node, path, context);
@@ -123,6 +128,38 @@ namespace JevDotNet.Internal
             }
         }
 
+        private static int CountJsonElement(JsonElement element)
+        {
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    var objectCount = 0;
+                    foreach (var property in element.EnumerateObject())
+                    {
+                        objectCount++;
+                        if (property.Value.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
+                        {
+                            objectCount += CountJsonElement(property.Value);
+                        }
+                    }
+
+                    return objectCount;
+                case JsonValueKind.Array:
+                    var arrayCount = 0;
+                    foreach (var item in element.EnumerateArray())
+                    {
+                        if (item.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
+                        {
+                            arrayCount += CountJsonElement(item);
+                        }
+                    }
+
+                    return arrayCount;
+                default:
+                    return 0;
+            }
+        }
+
         private static IEnumerable<SerializableMember> GetSerializableMembers(Type type)
         {
             const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
@@ -178,7 +215,7 @@ namespace JevDotNet.Internal
                 return true;
             }
 
-            return type == typeof(JsonElement) || type == typeof(JsonDocument);
+            return type == typeof(JsonDocument);
         }
 
         private readonly struct SerializableMember

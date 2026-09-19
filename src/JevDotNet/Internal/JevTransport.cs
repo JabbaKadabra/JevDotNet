@@ -25,11 +25,23 @@ namespace JevDotNet
             IReadOnlyList<IQuestion> questions,
             CancellationToken cancellationToken)
         {
+            string payload;
+            try
+            {
+                payload = BuildRequestBody(model, state, questions);
+            }
+            catch (Exception exception) when (exception is JsonException or NotSupportedException)
+            {
+                throw new JevValidationException(
+                    $"The Jev request could not be serialized to JSON: {exception.Message}",
+                    exception);
+            }
+
             using (var request = new HttpRequestMessage(HttpMethod.Post, endpoint))
             {
                 request.Headers.TryAddWithoutValidation("Authorization", "Bearer " + apiKey);
                 request.Content = new StringContent(
-                    BuildRequestBody(model, state, questions),
+                    payload,
                     new UTF8Encoding(false),
                     "application/json");
 
@@ -81,7 +93,6 @@ namespace JevDotNet
         private static async Task<string> ReadBodyAsync(HttpResponseMessage response, CancellationToken cancellationToken)
         {
             var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-#if NETSTANDARD2_0
             using (stream)
             {
                 using (var buffer = new MemoryStream())
@@ -90,16 +101,6 @@ namespace JevDotNet
                     return Encoding.UTF8.GetString(buffer.ToArray());
                 }
             }
-#else
-            await using (stream.ConfigureAwait(false))
-            {
-                using (var buffer = new MemoryStream())
-                {
-                    await stream.CopyToAsync(buffer, 81920, cancellationToken).ConfigureAwait(false);
-                    return Encoding.UTF8.GetString(buffer.ToArray());
-                }
-            }
-#endif
         }
 
         private static JevResult ParseResponse(string body, IReadOnlyList<IQuestion> questions)
@@ -167,12 +168,12 @@ namespace JevDotNet
                 throw new JevProtocolException($"The 'usage.{name}' property of the response must be a number.");
             }
 
-            if (value.TryGetInt32(out var tokens))
+            if (value.TryGetInt32(out var tokens) && tokens >= 0)
             {
                 return tokens;
             }
 
-            if (value.TryGetInt64(out var longTokens) && longTokens >= int.MinValue && longTokens <= int.MaxValue)
+            if (value.TryGetInt64(out var longTokens) && longTokens >= 0 && longTokens <= int.MaxValue)
             {
                 return (int)longTokens;
             }

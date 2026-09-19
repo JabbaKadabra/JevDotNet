@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace JevDotNet.Tests;
@@ -206,20 +207,32 @@ public class PropertyLimitTests
     }
 
     [Fact]
-    public async Task Json_nodes_are_counted_like_their_serialized_form()
+    public async Task Json_nodes_and_json_elements_are_counted_like_their_serialized_form()
     {
         var handler = RecordingHandler.Json(ChoiceResponse);
         using var jev = TestClient.Create(handler, new JevOptions { MaxChoiceProperties = 10 });
 
-        var accepted = JsonNode.Parse("""{"a":1,"b":2,"c":3}""")!;
-        await jev.ChoiceAsync("ticket", "Which option?", new[] { accepted });
+        var acceptedNode = JsonNode.Parse("""{"a":1,"b":2,"c":3}""")!;
+        await jev.ChoiceAsync("ticket", "Which option?", new[] { acceptedNode });
 
-        var rejected = JsonNode.Parse("""{"a":1,"b":2,"c":3,"d":4,"e":5,"f":6,"g":7,"h":8,"i":9,"j":10,"k":11}""")!;
-        var act = () => jev.ChoiceAsync("ticket", "Which option?", new[] { rejected });
+        var acceptedElement = JsonDocument.Parse("""{"a":1,"b":2,"c":3}""").RootElement;
+        await jev.ChoiceAsync("ticket", "Which option?", new[] { acceptedElement });
 
-        await act.Should().ThrowAsync<JevValidationException>()
+        var rejectedNode = JsonNode.Parse("""{"a":1,"b":2,"c":3,"d":4,"e":5,"f":6,"g":7,"h":8,"i":9,"j":10,"k":11}""")!;
+        var rejectNodeAct = () => jev.ChoiceAsync("ticket", "Which option?", new[] { rejectedNode });
+        await rejectNodeAct.Should().ThrowAsync<JevValidationException>()
             .WithMessage("*contains 11 serialized properties; the limit is 10*");
-        handler.CallCount.Should().Be(1);
+
+        var rejectedElement = JsonDocument.Parse("""{"a":1,"b":2,"c":3,"d":4,"e":5,"f":6,"g":7,"h":8,"i":9,"j":10,"k":11}""").RootElement;
+        var rejectElementAct = () => jev.ChoiceAsync("ticket", "Which option?", new[] { rejectedElement });
+        await rejectElementAct.Should().ThrowAsync<JevValidationException>()
+            .WithMessage("*contains 11 serialized properties; the limit is 10*");
+
+        var nestedElement = JsonDocument.Parse("""{"outer":{"inner":{"a":1,"b":2,"c":3,"d":4,"e":5,"f":6,"g":7,"h":8,"i":9,"j":10,"k":11}}}""").RootElement;
+        var nestedAct = () => jev.ChoiceAsync("ticket", "Which option?", new[] { nestedElement });
+        await nestedAct.Should().ThrowAsync<JevValidationException>()
+            .WithMessage("*contains 13 serialized properties; the limit is 10*");
+        handler.CallCount.Should().Be(2);
     }
 
     [Fact]

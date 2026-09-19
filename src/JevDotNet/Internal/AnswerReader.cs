@@ -7,6 +7,8 @@ namespace JevDotNet.Internal
     /// <summary>Strict readers for the answer elements returned by the API.</summary>
     internal static class AnswerReader
     {
+        /// <summary>Float tolerance for comparing parsed numbers against their allowed ranges.</summary>
+        private const double Tolerance = 1e-6;
         public static JsonElement RequireObject(JsonElement element, string questionId)
         {
             if (element.ValueKind != JsonValueKind.Object)
@@ -75,17 +77,36 @@ namespace JevDotNet.Internal
             if (double.IsNaN(value) || value < 0d || value > 1d)
             {
                 throw new JevProtocolException(
-                    $"{description} for question '{questionId}' must be between 0 and 1 but was {value.ToString(CultureInfo.InvariantCulture)}.");
+                    $"{description} for question '{questionId}' must be between 0 and 1 but was {Format(value)}.");
             }
 
             return value;
+        }
+
+        public static double RequireRange(double value, double minimum, double maximum, string description, string questionId)
+        {
+            if (double.IsNaN(value) || double.IsInfinity(value) || value < minimum - Tolerance || value > maximum + Tolerance)
+            {
+                throw new JevProtocolException(
+                    $"{description} for question '{questionId}' must be between {Format(minimum)} and {Format(maximum)} but was {Format(value)}.");
+            }
+
+            return value;
+        }
+
+        private static string Format(double value)
+        {
+            return double.IsNaN(value) || double.IsInfinity(value)
+                ? value.ToString("R", CultureInfo.InvariantCulture)
+                : value.ToString(CultureInfo.InvariantCulture);
         }
 
         public static int ParseOptionIndex(string name, int optionCount, string questionId)
         {
             if (!int.TryParse(name, NumberStyles.None, CultureInfo.InvariantCulture, out var index) ||
                 index < 0 ||
-                index >= optionCount)
+                index >= optionCount ||
+                !string.Equals(name, index.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal))
             {
                 throw new JevProtocolException(
                     $"The answer for question '{questionId}' contains the unknown option id '{name}'.");

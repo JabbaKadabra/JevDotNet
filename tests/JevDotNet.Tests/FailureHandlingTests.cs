@@ -177,6 +177,70 @@ public class FailureHandlingTests
     }
 
     [Fact]
+    public async Task Out_of_range_scores_are_rejected()
+    {
+        var body = FakeApi.Serialize(FakeApi.Envelope(new
+        {
+            score = new
+            {
+                type = "score",
+                score = 2.5,
+                legend = new Dictionary<string, string> { ["0"] = "Calm", ["1"] = "Angry" },
+                confidence = 0.5,
+            },
+        }));
+        using var jev = Create(_ => FakeApi.Message(body));
+
+        var act = () => jev.ScoreAsync("ticket", "How frustrated?", new[] { "Calm", "Angry" });
+
+        await act.Should().ThrowAsync<JevProtocolException>()
+            .WithMessage("*must be between 0 and 1*");
+    }
+
+    [Fact]
+    public async Task Alias_option_ids_are_rejected()
+    {
+        var body = FakeApi.Serialize(FakeApi.Envelope(new
+        {
+            choice = FakeApi.ChoiceAnswer("0", 1.0, new Dictionary<string, double> { ["01"] = 1.0 }),
+        }));
+        using var jev = Create(_ => FakeApi.Message(body));
+
+        var act = () => jev.ChoiceAsync("ticket", "Which team?", new[] { "billing", "technical" });
+
+        await act.Should().ThrowAsync<JevProtocolException>()
+            .WithMessage("*unknown option id '01'*");
+    }
+
+    [Fact]
+    public async Task Negative_usage_counts_are_rejected()
+    {
+        var body = FakeApi.Serialize(FakeApi.Envelope(new { noul = FakeApi.NoulAnswer(0.5) }, inputTokens: -1));
+        using var jev = Create(_ => FakeApi.Message(body));
+
+        var act = () => jev.NoulAsync("ticket", "Is it urgent?");
+
+        await act.Should().ThrowAsync<JevProtocolException>()
+            .WithMessage("*usage.input_tokens*");
+    }
+
+    [Fact]
+    public async Task State_serialization_failures_are_reported_as_local_validation_errors()
+    {
+        var handler = RecordingHandler.Json(ValidResponse);
+        using var jev = TestClient.Create(handler);
+
+        var cyclicState = new CyclicNode();
+        cyclicState.Next = cyclicState;
+
+        var act = () => jev.NoulAsync(cyclicState, "Is it urgent?");
+
+        await act.Should().ThrowAsync<JevValidationException>()
+            .WithMessage("*could not be serialized to JSON*");
+        handler.CallCount.Should().Be(0);
+    }
+
+    [Fact]
     public async Task Cancellation_before_sending_is_propagated_and_no_request_is_sent()
     {
         var handler = RecordingHandler.Json(ValidResponse);

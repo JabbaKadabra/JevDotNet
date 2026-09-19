@@ -150,9 +150,10 @@ The API receives the options as a criteria map with deterministic ids:
 ```
 
 `MaxChoiceProperties` counts the properties in each option's serialized object tree, including
-nested properties, dictionary entries, and properties inside array elements. Members marked with
-`[JsonIgnore]` are not counted. The limit defaults to 20 and is validated before any HTTP request is
-sent; options are never truncated. An oversized option produces an actionable error:
+nested properties, dictionary entries, and properties inside array elements. JSON object/array
+values (`JsonNode`, `JsonElement`) are counted exactly like their serialized form. Members marked
+with `[JsonIgnore]` are not counted. The limit defaults to 20 and is validated before any HTTP
+request is sent; options are never truncated. An oversized option produces an actionable error:
 
 ```text
 Choice option 2 contains 54 serialized properties; the limit is 20.
@@ -187,7 +188,10 @@ string selected = result.Get(department).Choice;
 * `OperationCanceledException` — cancellation was requested. The original `CancellationToken` is
   propagated unchanged.
 
-The client performs no automatic retries, caching, or blocking calls.
+The client performs no automatic retries, caching, or blocking calls. A state that cannot be
+serialized to JSON (for example a cyclic object graph) is reported locally as
+`JevValidationException` before any request is sent. To control timeouts, inject an `HttpClient`
+configured with your own `Timeout`.
 
 ## Building and verifying
 
