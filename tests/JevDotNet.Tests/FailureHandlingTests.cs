@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace JevDotNet.Tests;
 
-public class FailureHandlingTests
+public sealed class FailureHandlingTests
 {
     private const string ValidResponse = """{"model":"jev-latest","answers":{"noul":{"type":"noul","noul":0.5}},"usage":{"input_tokens":1,"output_tokens":2}}""";
 
@@ -12,7 +12,7 @@ public class FailureHandlingTests
         TestClient.Create(RecordingHandler.Responding(factory));
 
     [Fact]
-    public async Task Unsuccessful_responses_throw_with_the_status_and_body()
+    public async Task SendAsync_UnsuccessfulResponse_ThrowsWithStatusAndBody()
     {
         const string body = """{"error":"invalid api key"}""";
         using var jev = Create(_ => FakeApi.Message(body, HttpStatusCode.Unauthorized));
@@ -30,7 +30,7 @@ public class FailureHandlingTests
     [InlineData(HttpStatusCode.TooManyRequests)]
     [InlineData(HttpStatusCode.InternalServerError)]
     [InlineData(HttpStatusCode.BadGateway)]
-    public async Task Every_unsuccessful_status_throws(HttpStatusCode statusCode)
+    public async Task SendAsync_UnsuccessfulStatus_ThrowsWithThatStatus(HttpStatusCode statusCode)
     {
         using var jev = Create(_ => FakeApi.Message("{}", statusCode));
 
@@ -41,7 +41,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Long_error_bodies_are_truncated_in_the_exception()
+    public async Task SendAsync_LongErrorBody_TruncatesInException()
     {
         var body = new string('x', 10000);
         using var jev = Create(_ => FakeApi.Message(body, HttpStatusCode.BadGateway));
@@ -54,7 +54,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Malformed_json_bodies_are_rejected()
+    public async Task SendAsync_MalformedJson_ThrowsProtocol()
     {
         using var jev = Create(_ => FakeApi.Message("{not json"));
 
@@ -65,7 +65,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Empty_bodies_are_rejected()
+    public async Task SendAsync_EmptyBody_ThrowsProtocol()
     {
         using var jev = Create(_ => FakeApi.Message(""));
 
@@ -82,7 +82,7 @@ public class FailureHandlingTests
     [InlineData("""{"model":"jev-latest","answers":{"q":{"type":"noul","noul":0.5}}}""", "usage")]
     [InlineData("""{"model":"jev-latest","answers":{"q":{"type":"noul","noul":0.5}},"usage":{}}""", "input_tokens")]
     [InlineData("""{"model":"jev-latest","answers":[],"usage":{"input_tokens":1,"output_tokens":2}}""", "answers")]
-    public async Task Incomplete_responses_are_rejected(string body, string expectedMessagePart)
+    public async Task SendAsync_IncompleteResponse_ThrowsProtocol(string body, string expectedMessagePart)
     {
         using var jev = Create(_ => FakeApi.Message(body));
 
@@ -93,7 +93,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Mismatched_answer_types_are_rejected()
+    public async Task SendAsync_MismatchedAnswerType_ThrowsProtocol()
     {
         var body = FakeApi.Serialize(FakeApi.Envelope(new { noul = new { type = "score", score = 1.0 } }));
         using var jev = Create(_ => FakeApi.Message(body));
@@ -105,7 +105,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Unknown_choice_ids_are_rejected()
+    public async Task SendAsync_UnknownChoiceId_ThrowsProtocol()
     {
         var body = FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -120,7 +120,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Missing_probabilities_are_rejected()
+    public async Task SendAsync_MissingProbabilities_ThrowsProtocol()
     {
         var body = FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -135,7 +135,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Out_of_range_confidences_are_rejected()
+    public async Task SendAsync_ConfidenceOutOfRange_ThrowsProtocol()
     {
         var body = FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -150,7 +150,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Missing_noul_values_are_rejected()
+    public async Task SendAsync_MissingNoulValue_ThrowsProtocol()
     {
         var body = FakeApi.Serialize(FakeApi.Envelope(new { noul = new { type = "noul" } }));
         using var jev = Create(_ => FakeApi.Message(body));
@@ -162,7 +162,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Missing_legend_entries_are_rejected()
+    public async Task SendAsync_MissingLegendEntry_ThrowsProtocol()
     {
         var body = FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -177,7 +177,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Out_of_range_scores_are_rejected()
+    public async Task SendAsync_ScoreOutOfRange_ThrowsProtocol()
     {
         var body = FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -198,7 +198,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Alias_option_ids_are_rejected()
+    public async Task SendAsync_AliasOptionId_ThrowsProtocol()
     {
         var body = FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -213,7 +213,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Negative_usage_counts_are_rejected()
+    public async Task SendAsync_NegativeUsageCount_ThrowsProtocol()
     {
         var body = FakeApi.Serialize(FakeApi.Envelope(new { noul = FakeApi.NoulAnswer(0.5) }, inputTokens: -1));
         using var jev = Create(_ => FakeApi.Message(body));
@@ -225,7 +225,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task State_serialization_failures_are_reported_as_local_validation_errors()
+    public async Task SendAsync_UnserializableState_ThrowsValidation()
     {
         var handler = RecordingHandler.Json(ValidResponse);
         using var jev = TestClient.Create(handler);
@@ -241,7 +241,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Cancellation_before_sending_is_propagated_and_no_request_is_sent()
+    public async Task SendAsync_PreCancelledToken_PropagatesAndSendsNothing()
     {
         var handler = RecordingHandler.Json(ValidResponse);
         using var jev = TestClient.Create(handler);
@@ -256,7 +256,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Cancellation_during_http_work_is_propagated_unchanged()
+    public async Task SendAsync_CancelledDuringHttpWork_PropagatesToken()
     {
         using var cancellation = new CancellationTokenSource();
         var handler = RecordingHandler.RespondingAsync(async request =>
@@ -276,7 +276,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Cancellation_after_the_response_is_received_is_propagated_during_body_reading()
+    public async Task SendAsync_CancelledDuringBodyRead_PropagatesToken()
     {
         using var cancellation = new CancellationTokenSource();
         var handler = RecordingHandler.RespondingAsync(request =>
@@ -295,11 +295,13 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Local_validation_failures_send_no_request()
+    public async Task SendAsync_LocalValidationFailures_SendNothing()
     {
         var handler = RecordingHandler.Json(ValidResponse);
         using var jev = TestClient.Create(handler);
 
+        // The null entries below intentionally exercise the guards with a null argument. The
+        // null-forgiving operator marks that intent; it is the only use in this file.
         var actions = new Func<Task>[]
         {
             () => jev.ChoiceAsync("ticket", "Which team?", Array.Empty<string>()),
@@ -318,7 +320,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task The_client_can_be_used_again_after_a_failed_request()
+    public async Task Jev_AfterFailedRequest_ServesNextRequest()
     {
         var call = 0;
         using var jev = Create(_ => call++ == 0
@@ -335,7 +337,7 @@ public class FailureHandlingTests
     }
 
     [Fact]
-    public async Task Disposed_clients_throw_on_use()
+    public async Task Jev_Disposed_ThrowsObjectDisposed()
     {
         var handler = RecordingHandler.Json(ValidResponse);
         var jev = TestClient.Create(handler);
@@ -349,24 +351,24 @@ public class FailureHandlingTests
 
     private sealed class CancellingStream : MemoryStream
     {
-        private readonly CancellationToken _cancellationToken;
+        private readonly CancellationToken cancellingToken;
 
         public CancellingStream(byte[] buffer, CancellationToken cancellationToken)
             : base(buffer)
         {
-            _cancellationToken = cancellationToken;
+            cancellingToken = cancellationToken;
         }
 
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {
             await Task.Yield();
-            _cancellationToken.ThrowIfCancellationRequested();
+            cancellingToken.ThrowIfCancellationRequested();
             return await base.ReadAsync(buffer, cancellationToken);
         }
 
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            _cancellationToken.ThrowIfCancellationRequested();
+            cancellingToken.ThrowIfCancellationRequested();
             return base.ReadAsync(buffer, offset, count, cancellationToken);
         }
     }

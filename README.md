@@ -118,6 +118,8 @@ using var jev = new Jev(apiKey, options, httpClient);
 
 * `Endpoint` and `Model` override the API target.
 * `MaxChoiceProperties` limits how many serialized properties a single choice option may contain.
+* `JevOptions` is immutable: the values are validated once when the client is constructed. Use `with`
+  to derive a modified copy, for example `options with { MaxChoiceProperties = 10 }`.
 * A supplied `HttpClient` is reused and never disposed by `Jev`; when none is supplied, `Jev` owns
   and disposes its internal client.
 
@@ -192,6 +194,35 @@ The client performs no automatic retries, caching, or blocking calls. A state th
 serialized to JSON (for example a cyclic object graph) is reported locally as
 `JevValidationException` before any request is sent. To control timeouts, inject an `HttpClient`
 configured with your own `Timeout`.
+
+## Runnable sample
+
+[`samples/JevDotNet.Sample`](samples/JevDotNet.Sample/README.md) is a console app that walks through
+the library against the live API: direct calls, structured options, batches, named options,
+validation, and cancellation. It requires an API key:
+
+```bash
+export JEV_API_KEY="your-key"
+dotnet run --project samples/JevDotNet.Sample            # every scenario
+dotnet run --project samples/JevDotNet.Sample -- batch   # one scenario
+```
+
+Set `JEV_MODEL` to override the default model, or pass `--help` to list the scenarios.
+
+## Conventions and scope
+
+`JevDotNet` is a standalone client library, not a hosted service, so a few deliberate choices differ
+from service-oriented .NET conventions:
+
+* It targets `netstandard2.0` so older runtimes can consume it. `src/JevDotNet/IsExternalInit.cs`
+  supplies the marker type that C# records and `init` accessors require on that target.
+* Data shapes are records: answers, token usage, and `JevOptions` are immutable and expose `init`
+  properties; questions are immutable records validated at construction.
+* The `Jev` client has no interface in front of it, and there is no DI container, hosted service, or
+  `ILogger` dependency. `HttpClient` is supplied through the constructor instead of
+  `IHttpClientFactory`, and the client disposes only the instance it created. Failures surface as
+  the `JevException` hierarchy and callers decide how to log them.
+* Tests use xUnit, AwesomeAssertions, and NSubstitute.
 
 ## Building and verifying
 

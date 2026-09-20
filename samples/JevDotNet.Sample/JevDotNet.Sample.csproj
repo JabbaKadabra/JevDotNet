@@ -8,7 +8,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <RootNamespace>JevDotNet.Verification</RootNamespace>
+    <AssemblyName>JevDotNet.Sample</AssemblyName>
+    <RootNamespace>JevDotNet.Sample</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

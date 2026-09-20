@@ -2,10 +2,10 @@ using System.Text.Json;
 
 namespace JevDotNet.Tests;
 
-public class DirectCallTests
+public sealed class DirectCallTests
 {
     [Fact]
-    public async Task ChoiceAsync_sends_the_question_and_returns_the_typed_answer()
+    public async Task ChoiceAsync_ValidAnswer_SendsQuestionAndReturnsTypedAnswer()
     {
         var handler = RecordingHandler.Json(FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -45,7 +45,7 @@ public class DirectCallTests
     }
 
     [Fact]
-    public async Task Generic_options_are_serialized_as_structured_descriptions_and_mapped_back_by_identity()
+    public async Task ChoiceAsync_PocoOptions_SerializesStructuredDescriptionsAndMapsByReference()
     {
         var teams = new[]
         {
@@ -78,7 +78,7 @@ public class DirectCallTests
     }
 
     [Fact]
-    public async Task Enum_options_are_serialized_by_name()
+    public async Task ChoiceAsync_EnumOptions_SerializesByName()
     {
         var handler = RecordingHandler.Json(FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -99,7 +99,7 @@ public class DirectCallTests
     }
 
     [Fact]
-    public async Task Poco_state_is_sent_as_a_json_object()
+    public async Task NoulAsync_PocoState_SendsJsonObject()
     {
         var handler = RecordingHandler.Json(FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -116,7 +116,7 @@ public class DirectCallTests
     }
 
     [Fact]
-    public async Task Array_state_is_sent_as_a_json_array()
+    public async Task NoulAsync_ArrayState_SendsJsonArray()
     {
         var handler = RecordingHandler.Json(FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -133,7 +133,7 @@ public class DirectCallTests
     }
 
     [Fact]
-    public async Task ScoreAsync_sends_levels_as_an_array_and_returns_score_metadata()
+    public async Task ScoreAsync_ValidAnswer_SendsLevelsAndReturnsMetadata()
     {
         var handler = RecordingHandler.Json(FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -153,10 +153,11 @@ public class DirectCallTests
         answer.Score.Should().BeApproximately(1.6, 1e-9);
         answer.Confidence.Should().Be(0.78);
         answer.Legend.Should().Equal("Calm", "Frustrated", "Very angry");
-        answer.Probabilities.Should().NotBeNull();
-        answer.Probabilities![2].LevelIndex.Should().Be(2);
-        answer.Probabilities![2].Level.Should().Be("Very angry");
-        answer.Probabilities![2].Probability.Should().Be(0.65);
+        var probabilities = answer.Probabilities
+            ?? throw new InvalidOperationException("Expected the probability distribution to be present.");
+        probabilities[2].LevelIndex.Should().Be(2);
+        probabilities[2].Level.Should().Be("Very angry");
+        probabilities[2].Probability.Should().Be(0.65);
 
         var question = handler.Last.Question("score");
         question.GetProperty("type").GetString().Should().Be("score");
@@ -165,7 +166,7 @@ public class DirectCallTests
     }
 
     [Fact]
-    public async Task ScoreAsync_tolerates_an_absent_probability_distribution()
+    public async Task ScoreAsync_MissingProbabilities_LeavesProbabilitiesNull()
     {
         var handler = RecordingHandler.Json(FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -183,7 +184,7 @@ public class DirectCallTests
     }
 
     [Fact]
-    public async Task NoulAsync_sends_no_criteria_when_no_descriptions_are_supplied()
+    public async Task NoulAsync_NoDescriptions_OmitsCriteria()
     {
         var handler = RecordingHandler.Json(FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -200,7 +201,7 @@ public class DirectCallTests
     }
 
     [Fact]
-    public async Task Noul_criteria_are_sent_when_descriptions_are_supplied()
+    public async Task NoulAsync_DescriptionsSupplied_SendsCriteria()
     {
         var handler = RecordingHandler.Json(FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -222,7 +223,7 @@ public class DirectCallTests
     }
 
     [Fact]
-    public async Task AskAsync_returns_the_typed_answer_for_a_reusable_question()
+    public async Task AskAsync_ReusableQuestion_ReturnsTypedAnswer()
     {
         var department = new Choice<Team>(
             "department",
@@ -247,7 +248,7 @@ public class DirectCallTests
     }
 
     [Fact]
-    public async Task Result_exposes_the_model_and_token_usage()
+    public async Task SendAsync_CompletedBatch_ExposesModelAndUsage()
     {
         var handler = RecordingHandler.Json(FakeApi.Serialize(
             FakeApi.Envelope(new { q = FakeApi.NoulAnswer(0.5) }, model: "jev-2026-01", inputTokens: 700, outputTokens: 120)));
@@ -261,7 +262,7 @@ public class DirectCallTests
     }
 
     [Fact]
-    public async Task Options_override_the_endpoint_and_model()
+    public async Task JevOptions_CustomValues_OverrideEndpointAndModel()
     {
         var handler = RecordingHandler.Json(FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -275,12 +276,12 @@ public class DirectCallTests
 
         await jev.NoulAsync("ticket", "Is it urgent?");
 
-        handler.Last.Message.RequestUri!.ToString().Should().Be("https://example.test/jev");
+        handler.Last.Message.RequestUri.Should().Be(new Uri("https://example.test/jev"));
         handler.Last.Json.GetProperty("model").GetString().Should().Be("jev-2026-01");
     }
 
     [Fact]
-    public async Task State_snapshot_is_taken_when_the_batch_is_sent()
+    public async Task SendAsync_ReusedBuilder_SnapshotsQuestionsPerSend()
     {
         var handler = RecordingHandler.Json(FakeApi.Serialize(FakeApi.Envelope(new
         {

@@ -110,13 +110,14 @@ await runner.CheckAsync("mixed batch returns typed answers and metadata", async 
         .Score(frustration)
         .SendAsync();
 
+    var frustrationAnswer = result.Get(frustration);
     Expect.Equal(teams[1], result.Get(department).Choice, "The typed choice answer should be readable.");
     Expect.Equal(0.92, result.Get(urgent).Noul, "The typed noul answer should be readable.");
-    Expect.Equal(1.6, result.Get(frustration).Score, "The typed score answer should be readable.");
+    Expect.Equal(1.6, frustrationAnswer.Score, "The typed score answer should be readable.");
     Expect.Equal("jev-latest", result.Model, "The model should be returned.");
     Expect.Equal(312, result.Usage.InputTokens, "The input token count should be returned.");
     Expect.Equal(48, result.Usage.OutputTokens, "The output token count should be returned.");
-    Expect.Equal(3, result.Get(frustration).Probabilities!.Count, "Score probabilities should be returned.");
+    Expect.Equal(3, frustrationAnswer.Probabilities?.Count, "Score probabilities should be returned.");
 });
 
 await runner.CheckAsync("a score answer without probabilities is tolerated", async () =>
@@ -142,7 +143,7 @@ await runner.CheckAsync("a score answer without probabilities is tolerated", asy
     var answer = await jev.ScoreAsync("ticket", "How frustrated?", new[] { "Calm", "Frustrated", "Very angry" });
 
     Expect.Equal(1.035, answer.Score, "The score should be returned.");
-    Expect.True(answer.Probabilities == null, "The probabilities should stay absent.");
+    Expect.True(answer.Probabilities is null, "The probabilities should stay absent.");
 });
 
 await runner.CheckAsync("the endpoint and model can be overridden", async () =>
@@ -156,7 +157,7 @@ await runner.CheckAsync("the endpoint and model can be overridden", async () =>
 
     await jev.NoulAsync("ticket", "Is it urgent?");
 
-    Expect.Equal("https://example.test/jev", handler.Last.Message.RequestUri!.ToString(), "The endpoint override should be used.");
+    Expect.Equal("https://example.test/jev", handler.Last.Message.RequestUri?.ToString(), "The endpoint override should be used.");
     Expect.Equal("jev-2026-01", handler.Last.Json.GetProperty("model").GetString(), "The model override should be used.");
 });
 
@@ -356,7 +357,7 @@ await runner.CheckAsync("a supplied HTTP client is used and stays alive after di
     jev.Dispose();
 
     using var response = await httpClient.GetAsync("https://example.test/still-alive");
-    Expect.True(true, "The supplied client should not be disposed by Jev.");
+    Expect.True(response.IsSuccessStatusCode, "The supplied client should not be disposed by Jev.");
 });
 
 // ---------------------------------------------------------------------------

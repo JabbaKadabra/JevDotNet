@@ -4,12 +4,12 @@ using NSubstitute;
 
 namespace JevDotNet.Tests;
 
-public class LifecycleTests
+public sealed class LifecycleTests
 {
     private const string ValidResponse = """{"model":"jev-latest","answers":{"noul":{"type":"noul","noul":0.5}},"usage":{"input_tokens":1,"output_tokens":2}}""";
 
     [Fact]
-    public async Task A_supplied_http_client_is_used_and_not_disposed()
+    public async Task Jev_SuppliedHttpClient_IsUsedAndNotDisposed()
     {
         var handler = RecordingHandler.Json(ValidResponse);
         using var inner = new HttpClient(handler);
@@ -29,7 +29,7 @@ public class LifecycleTests
     }
 
     [Fact]
-    public async Task An_owned_http_client_is_disposed()
+    public async Task Jev_OwnedHttpClientDisposed_ThrowsOnNextUse()
     {
         var handler = RecordingHandler.Json(ValidResponse);
         var jev = new Jev("test-key", null, new HttpClient(handler));
@@ -42,7 +42,7 @@ public class LifecycleTests
     }
 
     [Fact]
-    public async Task Dispose_is_idempotent()
+    public void Jev_DisposeTwice_DoesNotThrow()
     {
         var jev = TestClient.Create(RecordingHandler.Json(ValidResponse));
 
@@ -53,7 +53,7 @@ public class LifecycleTests
     }
 
     [Fact]
-    public async Task Independent_concurrent_requests_are_isolated()
+    public async Task Jev_ConcurrentRequests_AreIsolated()
     {
         var handler = RecordingHandler.RespondingAsync(async request =>
         {
@@ -78,7 +78,7 @@ public class LifecycleTests
     }
 
     [Fact]
-    public async Task One_client_serves_many_requests()
+    public async Task Jev_MultipleRequests_ReusesClient()
     {
         var handler = RecordingHandler.Json(ValidResponse);
         using var jev = TestClient.Create(handler);
@@ -92,7 +92,7 @@ public class LifecycleTests
     }
 
     [Fact]
-    public async Task Bearer_authentication_is_set_on_every_request()
+    public async Task Jev_EveryRequest_SetsBearerAuthentication()
     {
         var handler = RecordingHandler.Json(ValidResponse);
         using var inner = new HttpClient(handler);
@@ -117,7 +117,7 @@ public class LifecycleTests
     }
 
     [Fact]
-    public async Task Requests_do_not_retry_automatically()
+    public async Task Jev_UnsuccessfulResponse_DoesNotRetry()
     {
         var handler = RecordingHandler.Responding(_ => FakeApi.Message("{}", HttpStatusCode.TooManyRequests));
         using var jev = TestClient.Create(handler);
@@ -128,4 +128,3 @@ public class LifecycleTests
         handler.CallCount.Should().Be(1);
     }
 }
-

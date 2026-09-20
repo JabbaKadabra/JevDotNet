@@ -33,19 +33,19 @@ internal sealed class RecordedRequest
 /// <summary>An <see cref="HttpMessageHandler"/> that records requests and returns canned responses.</summary>
 internal sealed class RecordingHandler : HttpMessageHandler
 {
-    private readonly Func<HttpRequestMessage, string, CancellationToken, Task<HttpResponseMessage>> _handler;
-    private readonly List<RecordedRequest> _requests = new();
+    private readonly Func<HttpRequestMessage, string, CancellationToken, Task<HttpResponseMessage>> handler;
+    private readonly List<RecordedRequest> requests = new();
 
     public RecordingHandler(Func<HttpRequestMessage, string, CancellationToken, Task<HttpResponseMessage>> handler)
     {
-        _handler = handler;
+        this.handler = handler;
     }
 
-    public IReadOnlyList<RecordedRequest> Requests => _requests;
+    public IReadOnlyList<RecordedRequest> Requests => requests;
 
-    public int CallCount => _requests.Count;
+    public int CallCount => requests.Count;
 
-    public RecordedRequest Last => _requests[^1];
+    public RecordedRequest Last => requests[^1];
 
     public static RecordingHandler Json(string body, HttpStatusCode statusCode = HttpStatusCode.OK) =>
         new((_, _, _) => Task.FromResult(FakeApi.Message(body, statusCode)));
@@ -58,11 +58,11 @@ internal sealed class RecordingHandler : HttpMessageHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var body = request.Content == null
+        var body = request.Content is null
             ? string.Empty
             : await request.Content.ReadAsStringAsync(cancellationToken);
-        _requests.Add(new RecordedRequest(request, body));
-        return await _handler(request, body, cancellationToken);
+        requests.Add(new RecordedRequest(request, body));
+        return await handler(request, body, cancellationToken);
     }
 }
 
@@ -90,7 +90,7 @@ internal static class FakeApi
         double confidence,
         Dictionary<string, string> legend,
         Dictionary<string, double>? probabilities = null) =>
-        probabilities == null
+        probabilities is null
             ? (object)new { type = "score", score, legend, confidence }
             : new { type = "score", score, legend, probabilities, confidence };
 

@@ -28,18 +28,19 @@ public sealed class RecordedRequest
 /// <summary>A fake <see cref="HttpMessageHandler"/> used to verify the library without a live API.</summary>
 public sealed class FakeHandler : HttpMessageHandler
 {
-    private readonly Func<HttpRequestMessage, string, CancellationToken, Task<HttpResponseMessage>> _handler;
+    private readonly Func<HttpRequestMessage, string, CancellationToken, Task<HttpResponseMessage>> handler;
+    private readonly List<RecordedRequest> requests = new();
 
     public FakeHandler(Func<HttpRequestMessage, string, CancellationToken, Task<HttpResponseMessage>> handler)
     {
-        _handler = handler;
+        this.handler = handler;
     }
 
-    public List<RecordedRequest> Requests { get; } = new();
+    public IReadOnlyList<RecordedRequest> Requests => requests;
 
-    public int CallCount => Requests.Count;
+    public int CallCount => requests.Count;
 
-    public RecordedRequest Last => Requests[^1];
+    public RecordedRequest Last => requests[^1];
 
     public static FakeHandler Json(string body, HttpStatusCode statusCode = HttpStatusCode.OK) =>
         new((_, _, _) => Task.FromResult(Message(body, statusCode)));
@@ -49,31 +50,31 @@ public sealed class FakeHandler : HttpMessageHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var body = request.Content == null
+        var body = request.Content is null
             ? string.Empty
             : await request.Content.ReadAsStringAsync(cancellationToken);
-        Requests.Add(new RecordedRequest(request, body));
-        return await _handler(request, body, cancellationToken);
+        requests.Add(new RecordedRequest(request, body));
+        return await handler(request, body, cancellationToken);
     }
 }
 
 /// <summary>A minimal check runner that prints results and tracks failures.</summary>
 public sealed class CheckRunner
 {
-    private int _passed;
-    private int _failed;
+    private int passed;
+    private int failed;
 
     public async Task CheckAsync(string name, Func<Task> check)
     {
         try
         {
             await check();
-            _passed++;
+            passed++;
             Console.WriteLine($"  PASS  {name}");
         }
         catch (Exception exception)
         {
-            _failed++;
+            failed++;
             Console.WriteLine($"  FAIL  {name}");
             Console.WriteLine($"        {exception.GetType().Name}: {exception.Message}");
         }
@@ -82,11 +83,12 @@ public sealed class CheckRunner
     public int Complete()
     {
         Console.WriteLine();
-        Console.WriteLine($"{_passed} passed, {_failed} failed.");
-        return _failed == 0 ? 0 : 1;
+        Console.WriteLine($"{passed} passed, {failed} failed.");
+        return failed == 0 ? 0 : 1;
     }
 }
 
+/// <summary>Assertions used by the verification checks.</summary>
 public static class Expect
 {
     public static void True(bool condition, string message)
@@ -110,14 +112,6 @@ public static class Expect
         if (!ReferenceEquals(expected, actual))
         {
             throw new InvalidOperationException($"{message} The instances are different.");
-        }
-    }
-
-    public static void Contains(string expectedPart, string actual, string message)
-    {
-        if (!actual.Contains(expectedPart, StringComparison.Ordinal))
-        {
-            throw new InvalidOperationException($"{message} '{expectedPart}' was not found in '{actual}'.");
         }
     }
 

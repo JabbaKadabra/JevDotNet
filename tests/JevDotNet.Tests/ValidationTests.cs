@@ -1,9 +1,11 @@
 namespace JevDotNet.Tests;
 
-public class ValidationTests
+// Guard tests deliberately pass null through parameters that are declared non-nullable. The
+// null-forgiving operator marks that intent; it is used only in this file and in FailureHandlingTests.
+public sealed class ValidationTests
 {
     [Fact]
-    public void Api_keys_are_required()
+    public void Jev_NullOrEmptyApiKey_Throws()
     {
         var nullKey = () => new Jev(null!);
         var emptyKey = () => new Jev("   ");
@@ -13,7 +15,7 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Endpoints_must_be_absolute_http_urls()
+    public void Jev_InvalidEndpointOptions_Throws()
     {
         var relative = () => new Jev("key", new JevOptions { Endpoint = "/relative" });
         var otherScheme = () => new Jev("key", new JevOptions { Endpoint = "ftp://example.com/jev" });
@@ -25,7 +27,7 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Models_must_not_be_empty()
+    public void Jev_EmptyModelOption_Throws()
     {
         var act = () => new Jev("key", new JevOptions { Model = " " });
 
@@ -33,7 +35,7 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Choice_questions_require_an_id_instructions_and_options()
+    public void ChoiceQuestion_MissingIdInstructionsOrOptions_Throws()
     {
         var nullId = () => new Choice<string>(null!, "instructions", new[] { "a" });
         var emptyId = () => new Choice<string>("  ", "instructions", new[] { "a" });
@@ -53,7 +55,7 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Choice_questions_reject_more_than_255_options()
+    public void ChoiceQuestion_MoreThan255Options_Throws()
     {
         var options = Enumerable.Range(0, 256).Select(index => "option-" + index).ToArray();
 
@@ -64,7 +66,7 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Named_choice_questions_validate_names_and_descriptions()
+    public void ChoiceQuestion_InvalidNamesOrDescriptions_Throws()
     {
         var nullDictionary = () => new ChoiceQuestion("id", "instructions", (IReadOnlyDictionary<string, string?>)null!);
         var emptyDictionary = () => new ChoiceQuestion("id", "instructions", new Dictionary<string, string?>());
@@ -78,7 +80,7 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Duplicate_named_options_are_rejected()
+    public void ChoiceQuestion_DuplicateNamedOptions_Throws()
     {
         var act = () => new ChoiceQuestion(
             "id",
@@ -89,7 +91,7 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Score_questions_require_at_least_two_levels()
+    public void ScoreQuestion_FewerThanTwoLevels_Throws()
     {
         var zero = () => new Score("id", "instructions", Array.Empty<string>());
         var one = () => new Score("id", "instructions", new[] { "Only one" });
@@ -101,7 +103,7 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Score_levels_must_not_be_null_or_empty()
+    public void ScoreQuestion_NullOrEmptyLevel_Throws()
     {
         var nullLevel = () => new Score("id", "instructions", new[] { "Calm", null! });
         var emptyLevel = () => new Score("id", "instructions", new[] { "Calm", " " });
@@ -111,7 +113,7 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Noul_questions_require_an_id_and_instructions()
+    public void NoulQuestion_MissingIdOrInstructions_Throws()
     {
         var nullId = () => new Noul(null!, "instructions");
         var emptyInstructions = () => new Noul("id", "  ");
@@ -121,7 +123,7 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Null_states_are_rejected()
+    public void Query_NullState_Throws()
     {
         using var jev = TestClient.Create(RecordingHandler.Json("{}"));
 
@@ -131,7 +133,7 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Builders_reject_null_questions()
+    public void Query_NullQuestion_Throws()
     {
         using var jev = TestClient.Create(RecordingHandler.Json("{}"));
 
@@ -141,7 +143,7 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Default_options_match_the_documented_defaults()
+    public void JevOptions_DefaultInstance_MatchesDocumentedDefaults()
     {
         var options = new JevOptions();
 
@@ -151,7 +153,7 @@ public class ValidationTests
     }
 
     [Fact]
-    public void Result_get_rejects_null_questions()
+    public void ResultGet_NullQuestion_Throws()
     {
         var result = new JevResult("jev-latest", new JevUsage(1, 1), new Dictionary<string, object>());
 

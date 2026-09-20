@@ -1,244 +1,251 @@
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
-namespace JevDotNet.Internal
+namespace JevDotNet.Internal;
+
+/// <summary>
+/// Counts the properties in the serialized object tree of a choice option. Nested properties, dictionary
+/// entries, and properties inside array elements are counted. Members marked with
+/// <see cref="JsonIgnoreAttribute"/> are not counted. This is a property limit, not a text-length limit.
+/// </summary>
+internal static class PropertyCounter
 {
-    /// <summary>
-    /// Counts the properties in the serialized object tree of a choice option. Nested properties, dictionary
-    /// entries, and properties inside array elements are counted. Members marked with
-    /// <see cref="JsonIgnoreAttribute"/> are not counted. This is a property limit, not a text-length limit.
-    /// </summary>
-    internal static class PropertyCounter
+    /// <summary>Counts the serialized properties in <paramref name="value"/>'s object tree.</summary>
+    /// <param name="value">The option value to inspect.</param>
+    /// <param name="context">A description of the option used in error messages.</param>
+    /// <returns>The number of serialized properties.</returns>
+    public static int Count(object? value, string context)
     {
-        /// <summary>Counts the serialized properties in <paramref name="value"/>'s object tree.</summary>
-        /// <param name="value">The option value to inspect.</param>
-        /// <param name="context">A description of the option used in error messages.</param>
-        /// <returns>The number of serialized properties.</returns>
-        public static int Count(object? value, string context)
+        var path = new HashSet<object>(ReferenceComparer.Instance);
+        return CountValue(value, path, context);
+    }
+
+    private static int CountValue(object? value, HashSet<object> path, string context)
+    {
+        if (value is null)
         {
-            var path = new HashSet<object>(ReferenceComparer.Instance);
-            return CountValue(value, path, context);
+            return 0;
         }
 
-        private static int CountValue(object? value, HashSet<object> path, string context)
+        var type = value.GetType();
+        if (IsScalar(type))
         {
-            if (value == null)
-            {
-                return 0;
-            }
-
-            var type = value.GetType();
-            if (IsScalar(type))
-            {
-                return 0;
-            }
-
-            var trackReference = !type.IsValueType;
-            if (trackReference && !path.Add(value))
-            {
-                throw new JevValidationException(
-                    $"{context} contains a cyclic object graph and cannot be serialized as a JSON description.");
-            }
-
-            try
-            {
-                if (value is JsonElement element)
-                {
-                    return CountJsonElement(element);
-                }
-
-                if (value is JsonNode node)
-                {
-                    return CountNode(node, path, context);
-                }
-
-                if (value is IDictionary dictionary)
-                {
-                    var dictionaryCount = dictionary.Count;
-                    foreach (DictionaryEntry entry in dictionary)
-                    {
-                        dictionaryCount += CountValue(entry.Value, path, context);
-                    }
-
-                    return dictionaryCount;
-                }
-
-                if (value is IEnumerable enumerable)
-                {
-                    var enumerableCount = 0;
-                    foreach (var item in enumerable)
-                    {
-                        enumerableCount += CountValue(item, path, context);
-                    }
-
-                    return enumerableCount;
-                }
-
-                var count = 0;
-                foreach (var member in GetSerializableMembers(type))
-                {
-                    count++;
-                    count += CountValue(member.GetValue(value), path, context);
-                }
-
-                return count;
-            }
-            finally
-            {
-                if (trackReference)
-                {
-                    path.Remove(value);
-                }
-            }
+            return 0;
         }
 
-        private static int CountNode(JsonNode node, HashSet<object> path, string context)
+        var trackReference = !type.IsValueType;
+        if (trackReference && !path.Add(value))
         {
-            switch (node)
+            throw new JevValidationException(
+                $"{context} contains a cyclic object graph and cannot be serialized as a JSON description.");
+        }
+
+        try
+        {
+            return value switch
             {
-                case JsonObject jsonObject:
-                    var objectCount = jsonObject.Count;
-                    foreach (var property in jsonObject)
-                    {
-                        if (property.Value != null)
-                        {
-                            objectCount += CountValue(property.Value, path, context);
-                        }
-                    }
+                JsonElement element => CountJsonElement(element),
+                JsonNode node => CountNode(node, path, context),
+                IDictionary dictionary => CountDictionary(dictionary, path, context),
+                IEnumerable enumerable => CountEnumerable(enumerable, path, context),
+                _ => CountMembers(type, value, path, context),
+            };
+        }
+        finally
+        {
+            if (trackReference)
+            {
+                path.Remove(value);
+            }
+        }
+    }
 
-                    return objectCount;
-                case JsonArray jsonArray:
-                    var arrayCount = 0;
-                    foreach (var item in jsonArray)
-                    {
-                        if (item != null)
-                        {
-                            arrayCount += CountValue(item, path, context);
-                        }
-                    }
+    private static int CountDictionary(IDictionary dictionary, HashSet<object> path, string context)
+    {
+        var count = dictionary.Count;
+        foreach (DictionaryEntry entry in dictionary)
+        {
+            count += CountValue(entry.Value, path, context);
+        }
 
-                    return arrayCount;
-                default:
-                    return 0;
+        return count;
+    }
+
+    private static int CountEnumerable(IEnumerable enumerable, HashSet<object> path, string context)
+    {
+        var count = 0;
+        foreach (var item in enumerable)
+        {
+            count += CountValue(item, path, context);
+        }
+
+        return count;
+    }
+
+    private static int CountMembers(Type type, object value, HashSet<object> path, string context)
+    {
+        var count = 0;
+        foreach (var member in GetSerializableMembers(type))
+        {
+            count++;
+            count += CountValue(member.GetValue(value), path, context);
+        }
+
+        return count;
+    }
+
+    private static int CountNode(JsonNode node, HashSet<object> path, string context) => node switch
+    {
+        JsonObject jsonObject => CountJsonObject(jsonObject, path, context),
+        JsonArray jsonArray => CountJsonArray(jsonArray, path, context),
+        _ => 0,
+    };
+
+    private static int CountJsonObject(JsonObject jsonObject, HashSet<object> path, string context)
+    {
+        var count = jsonObject.Count;
+        foreach (var property in jsonObject)
+        {
+            if (property.Value is not null)
+            {
+                count += CountValue(property.Value, path, context);
             }
         }
 
-        private static int CountJsonElement(JsonElement element)
+        return count;
+    }
+
+    private static int CountJsonArray(JsonArray jsonArray, HashSet<object> path, string context)
+    {
+        var count = 0;
+        foreach (var item in jsonArray)
         {
-            switch (element.ValueKind)
+            if (item is not null)
             {
-                case JsonValueKind.Object:
-                    var objectCount = 0;
-                    foreach (var property in element.EnumerateObject())
-                    {
-                        objectCount++;
-                        if (property.Value.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
-                        {
-                            objectCount += CountJsonElement(property.Value);
-                        }
-                    }
-
-                    return objectCount;
-                case JsonValueKind.Array:
-                    var arrayCount = 0;
-                    foreach (var item in element.EnumerateArray())
-                    {
-                        if (item.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
-                        {
-                            arrayCount += CountJsonElement(item);
-                        }
-                    }
-
-                    return arrayCount;
-                default:
-                    return 0;
+                count += CountValue(item, path, context);
             }
         }
 
-        private static IEnumerable<SerializableMember> GetSerializableMembers(Type type)
+        return count;
+    }
+
+    private static int CountJsonElement(JsonElement element) => element.ValueKind switch
+    {
+        JsonValueKind.Object => CountJsonObject(element),
+        JsonValueKind.Array => CountJsonArray(element),
+        _ => 0,
+    };
+
+    private static int CountJsonObject(JsonElement element)
+    {
+        var count = 0;
+        foreach (var property in element.EnumerateObject())
         {
-            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
-            foreach (var property in type.GetProperties(flags))
+            count++;
+            if (property.Value.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
             {
-                if (property.GetIndexParameters().Length != 0)
-                {
-                    continue;
-                }
-
-                var getter = property.GetMethod;
-                var included = property.IsDefined(typeof(JsonIncludeAttribute), inherit: true);
-                if (getter == null || (!getter.IsPublic && !included))
-                {
-                    continue;
-                }
-
-                if (property.IsDefined(typeof(JsonIgnoreAttribute), inherit: true))
-                {
-                    continue;
-                }
-
-                yield return new SerializableMember(property);
-            }
-
-            foreach (var field in type.GetFields(flags))
-            {
-                if (field.IsDefined(typeof(JsonIgnoreAttribute), inherit: true))
-                {
-                    continue;
-                }
-
-                if (!field.IsDefined(typeof(JsonIncludeAttribute), inherit: true))
-                {
-                    continue;
-                }
-
-                yield return new SerializableMember(field);
+                count += CountJsonElement(property.Value);
             }
         }
 
-        private static bool IsScalar(Type type)
+        return count;
+    }
+
+    private static int CountJsonArray(JsonElement element)
+    {
+        var count = 0;
+        foreach (var item in element.EnumerateArray())
         {
-            if (type == typeof(string) || type.IsPrimitive || type.IsEnum || type == typeof(decimal))
+            if (item.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
             {
-                return true;
+                count += CountJsonElement(item);
             }
-
-            if (type == typeof(DateTime) || type == typeof(DateTimeOffset) || type == typeof(TimeSpan) ||
-                type == typeof(Guid) || type == typeof(Uri) || type == typeof(byte[]))
-            {
-                return true;
-            }
-
-            return type == typeof(JsonDocument);
         }
 
-        private readonly struct SerializableMember
+        return count;
+    }
+
+    private static IEnumerable<SerializableMember> GetSerializableMembers(Type type)
+    {
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+        foreach (var property in type.GetProperties(flags))
         {
-            private readonly PropertyInfo? _property;
-            private readonly FieldInfo? _field;
-
-            public SerializableMember(PropertyInfo property)
+            if (property.GetIndexParameters().Length != 0)
             {
-                _property = property;
-                _field = null;
+                continue;
             }
 
-            public SerializableMember(FieldInfo field)
+            var getter = property.GetMethod;
+            var included = property.IsDefined(typeof(JsonIncludeAttribute), inherit: true);
+            if (getter is null || (!getter.IsPublic && !included))
             {
-                _property = null;
-                _field = field;
+                continue;
             }
 
-            public object? GetValue(object instance)
+            if (property.IsDefined(typeof(JsonIgnoreAttribute), inherit: true))
             {
-                return _property != null ? _property.GetValue(instance, null) : _field!.GetValue(instance);
+                continue;
             }
+
+            yield return new SerializableMember(property);
         }
+
+        foreach (var field in type.GetFields(flags))
+        {
+            if (field.IsDefined(typeof(JsonIgnoreAttribute), inherit: true))
+            {
+                continue;
+            }
+
+            if (!field.IsDefined(typeof(JsonIncludeAttribute), inherit: true))
+            {
+                continue;
+            }
+
+            yield return new SerializableMember(field);
+        }
+    }
+
+    private static bool IsScalar(Type type)
+    {
+        if (type == typeof(string) || type.IsPrimitive || type.IsEnum || type == typeof(decimal))
+        {
+            return true;
+        }
+
+        if (type == typeof(DateTime) || type == typeof(DateTimeOffset) || type == typeof(TimeSpan) ||
+            type == typeof(Guid) || type == typeof(Uri) || type == typeof(byte[]))
+        {
+            return true;
+        }
+
+        return type == typeof(JsonDocument);
+    }
+
+    private readonly struct SerializableMember
+    {
+        private readonly PropertyInfo? propertyInfo;
+        private readonly FieldInfo? fieldInfo;
+
+        public SerializableMember(PropertyInfo property)
+        {
+            propertyInfo = property;
+            fieldInfo = null;
+        }
+
+        public SerializableMember(FieldInfo field)
+        {
+            propertyInfo = null;
+            fieldInfo = field;
+        }
+
+        public object? GetValue(object instance) =>
+            propertyInfo is not null
+                ? propertyInfo.GetValue(instance, null)
+                : fieldInfo?.GetValue(instance);
     }
 }

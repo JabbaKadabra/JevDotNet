@@ -1,6 +1,6 @@
 namespace JevDotNet.Tests;
 
-public class BatchTests
+public sealed class BatchTests
 {
     private static RecordingHandler MixedHandler() => RecordingHandler.Json(FakeApi.Serialize(FakeApi.Envelope(new
     {
@@ -19,7 +19,7 @@ public class BatchTests
     })));
 
     [Fact]
-    public async Task Mixed_batch_returns_every_typed_answer()
+    public async Task SendAsync_MixedQuestions_ReturnsEveryTypedAnswer()
     {
         var department = new Choice<Team>(
             "department",
@@ -54,7 +54,7 @@ public class BatchTests
     }
 
     [Fact]
-    public async Task Typed_builder_methods_accept_matching_questions()
+    public async Task Query_TypedBuilderMethods_AcceptMatchingQuestions()
     {
         var handler = MixedHandler();
         using var jev = TestClient.Create(handler);
@@ -75,7 +75,7 @@ public class BatchTests
     }
 
     [Fact]
-    public async Task Non_generic_choice_question_uses_named_options_with_descriptions()
+    public async Task ChoiceQuestion_NamedOptions_SendsDescriptions()
     {
         var handler = RecordingHandler.Json(FakeApi.Serialize(FakeApi.Envelope(new
         {
@@ -105,7 +105,7 @@ public class BatchTests
     }
 
     [Fact]
-    public async Task Question_ids_key_the_answers_and_are_not_used_in_inference()
+    public async Task Query_QuestionId_KeysTheAnswerWithoutInference()
     {
         var handler = MixedHandler();
         using var jev = TestClient.Create(handler);
@@ -120,7 +120,7 @@ public class BatchTests
     }
 
     [Fact]
-    public async Task Duplicate_question_ids_are_rejected_without_sending_a_request()
+    public void Query_DuplicateQuestionId_ThrowsAndSendsNothing()
     {
         var handler = MixedHandler();
         using var jev = TestClient.Create(handler);
@@ -136,7 +136,7 @@ public class BatchTests
     }
 
     [Fact]
-    public async Task Repeated_question_handles_are_rejected_without_sending_a_request()
+    public void Query_RepeatedQuestionHandle_ThrowsAndSendsNothing()
     {
         var handler = MixedHandler();
         using var jev = TestClient.Create(handler);
@@ -152,7 +152,7 @@ public class BatchTests
     }
 
     [Fact]
-    public async Task Empty_batches_are_rejected_without_sending_a_request()
+    public async Task SendAsync_EmptyBatch_ThrowsAndSendsNothing()
     {
         var handler = MixedHandler();
         using var jev = TestClient.Create(handler);
@@ -165,7 +165,7 @@ public class BatchTests
     }
 
     [Fact]
-    public async Task Get_throws_for_a_question_that_was_not_in_the_batch()
+    public async Task ResultGet_QuestionNotInBatch_ThrowsValidation()
     {
         var handler = MixedHandler();
         using var jev = TestClient.Create(handler);
@@ -180,7 +180,7 @@ public class BatchTests
     }
 
     [Fact]
-    public async Task Get_throws_when_the_answer_type_does_not_match_the_question()
+    public async Task ResultGet_MismatchedAnswerType_ThrowsProtocol()
     {
         var handler = MixedHandler();
         using var jev = TestClient.Create(handler);
