@@ -17,8 +17,8 @@
     <PackageId>SystemOneDotNet</PackageId>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageProjectUrl>https://github.com/JabbaKadabra/SystemOne.NET</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/JabbaKadabra/SystemOne.NET</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/JabbaKadabra/SystemOneDotNet</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/JabbaKadabra/SystemOneDotNet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>systemone;typesafe;llm;classification;dotnet</PackageTags>
     <NeutralLanguage>en</NeutralLanguage>
