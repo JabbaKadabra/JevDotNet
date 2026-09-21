@@ -241,6 +241,19 @@ public sealed class FailureHandlingTests
     }
 
     [Fact]
+    public async Task SendAsync_UnsupportedStateType_ThrowsValidation()
+    {
+        var handler = RecordingHandler.Json(ValidResponse);
+        using var systemOne = TestClient.Create(handler);
+
+        var act = () => systemOne.NoulAsync(new { Type = typeof(string) }, "Is it urgent?");
+
+        await act.Should().ThrowAsync<SystemOneValidationException>()
+            .WithMessage("*could not be serialized to JSON*");
+        handler.CallCount.Should().Be(0);
+    }
+
+    [Fact]
     public async Task SendAsync_PreCancelledToken_PropagatesAndSendsNothing()
     {
         var handler = RecordingHandler.Json(ValidResponse);

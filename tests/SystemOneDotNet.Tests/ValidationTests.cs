@@ -19,11 +19,21 @@ public sealed class ValidationTests
     {
         var relative = () => SystemOneClient.Create("key", new SystemOneOptions { Endpoint = "/relative" });
         var otherScheme = () => SystemOneClient.Create("key", new SystemOneOptions { Endpoint = "ftp://example.com/systemOne" });
+        var unparseable = () => SystemOneClient.Create("key", new SystemOneOptions { Endpoint = "not a uri" });
         var empty = () => SystemOneClient.Create("key", new SystemOneOptions { Endpoint = "" });
 
         relative.Should().Throw<ArgumentException>().WithParameterName("options");
         otherScheme.Should().Throw<ArgumentException>().WithParameterName("options");
+        unparseable.Should().Throw<ArgumentException>().WithParameterName("options");
         empty.Should().Throw<ArgumentException>().WithParameterName("options");
+    }
+
+    [Fact]
+    public void SystemOne_HttpEndpointOption_IsAccepted()
+    {
+        var act = () => SystemOneClient.Create("key", new SystemOneOptions { Endpoint = "http://localhost:8080/systemone" });
+
+        act.Should().NotThrow();
     }
 
     [Fact]
@@ -178,5 +188,13 @@ public sealed class ValidationTests
         var act = () => result.Get<string>(null!);
 
         act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void SystemOneSettings_NullOptions_Throws()
+    {
+        var act = () => SystemOneSettings.From(null!);
+
+        act.Should().Throw<ArgumentNullException>().WithParameterName("options");
     }
 }

@@ -53,6 +53,18 @@ public sealed class LifecycleTests
     }
 
     [Fact]
+    public async Task SystemOne_OwnedHttpClient_IsDisposedWithTheClient()
+    {
+        var systemOne = SystemOneClient.Create("test-key");
+
+        var dispose = () => systemOne.Dispose();
+
+        dispose.Should().NotThrow();
+        var act = () => systemOne.NoulAsync("ticket", "Is it urgent?");
+        await act.Should().ThrowAsync<ObjectDisposedException>();
+    }
+
+    [Fact]
     public async Task SystemOne_ConcurrentRequests_AreIsolated()
     {
         var handler = RecordingHandler.RespondingAsync(async request =>

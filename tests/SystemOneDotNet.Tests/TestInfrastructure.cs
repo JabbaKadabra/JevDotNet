@@ -95,6 +95,11 @@ internal static class FakeApi
             : new { type = "score", score, legend, probabilities, confidence };
 
     public static object NoulAnswer(double noul) => new { type = "noul", noul };
+
+    public static string EnvelopeWithAnswer(string questionId, string answerJson) =>
+        $$"""{"model":"jev-latest","answers":{"{{questionId}}":""" +
+        answerJson +
+        """},"usage":{"input_tokens":1,"output_tokens":1}}""";
 }
 
 /// <summary>Shared client construction for tests.</summary>

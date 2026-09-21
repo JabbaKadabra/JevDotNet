@@ -26,8 +26,7 @@ internal sealed record SystemOneSettings(string Endpoint, string Model, int MaxC
             throw new ArgumentException("SystemOneOptions.Endpoint must not be empty.", nameof(options));
         }
 
-        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) ||
-            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        if (!IsAbsoluteHttpEndpoint(endpoint))
         {
             throw new ArgumentException(
                 $"SystemOneOptions.Endpoint must be an absolute HTTP or HTTPS URL but was '{endpoint}'.",
@@ -49,5 +48,15 @@ internal sealed record SystemOneSettings(string Endpoint, string Model, int MaxC
         }
 
         return new SystemOneSettings(endpoint, model, maxChoiceProperties);
+    }
+
+    private static bool IsAbsoluteHttpEndpoint(string endpoint)
+    {
+        if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        return uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps;
     }
 }
