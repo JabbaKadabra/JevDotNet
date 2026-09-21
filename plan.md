@@ -1,24 +1,24 @@
-# Jev .NET Standard 2.0 wrapper
+# SystemOne .NET Standard 2.0 wrapper
 
 ## Public API
 
-Create a `JevDotNet` library targeting `netstandard2.0`, with asynchronous calls and optional `CancellationToken` parameters throughout.
+Create a `SystemOneDotNet` library targeting `netstandard2.0`, with asynchronous calls and optional `CancellationToken` parameters throughout.
 
 ```csharp
-using JevDotNet;
+using SystemOneDotNet;
 
-using var jev = new Jev(apiKey);
+using var systemOne = new SystemOne(apiKey);
 
-Team team = await jev.ChoiceAsync(
+Team team = await systemOne.ChoiceAsync(
     ticket, "Which team should handle this?", teams,
     cancellationToken: ct);
 
-double frustration = await jev.ScoreAsync(
+double frustration = await systemOne.ScoreAsync(
     ticket, "How frustrated is the customer?",
     new[] { "Calm", "Frustrated", "Very angry" },
     cancellationToken: ct);
 
-double urgency = await jev.NoulAsync(
+double urgency = await systemOne.NoulAsync(
     ticket, "Does this message convey urgency?",
     cancellationToken: ct);
 ```
@@ -38,7 +38,7 @@ var frustration = new Score(
     "frustration",
     "How frustrated is the customer?", ["Calm", "Frustrated", "Very Angry"]);
 
-var result = await jev.Query(ticket)
+var result = await systemOne.Query(ticket)
     .Question(department)
     .Question(urgent)
     .Score(frustration)
@@ -50,7 +50,7 @@ double score = result.Get(frustration).Score;
 double probability = result.Get(urgent).Noul;
 
 // Detailed single-question call:
-var answer = await jev.AskAsync(ticket, department, ct);
+var answer = await systemOne.AskAsync(ticket, department, ct);
 ```
 
 ## Questions and results
@@ -66,26 +66,26 @@ var answer = await jev.AskAsync(ticket, department, ct);
 
 - Accept string, POCO, or array state. Use strings for instructions and Score levels in v1; Noul supports optional yes/no descriptions.
 - Materialize generic choices once, assign deterministic internal option IDs, and serialize each value as its description. Preserve strings as strings and serialize enums by name.
-- Send POCO descriptions as JSON objects, supported by Jev’s [structured criteria](https://docs.typesafe.ai/primitives/advanced). Map responses to original values rather than deserializing `T`.
+- Send POCO descriptions as JSON objects, supported by SystemOne’s [structured criteria](https://docs.typesafe.ai/primitives/advanced). Map responses to original values rather than deserializing `T`.
 - Use System.Text.Serialization over Newtonsoft
-- Default `JevOptions.MaxChoiceProperties` to **20**, counted separately across each choice’s serialized object tree. Count nested properties, dictionary entries, and properties within array elements; ignored members do not count. This is a property limit, not a text-length limit.
+- Default `SystemOneOptions.MaxChoiceProperties` to **20**, counted separately across each choice’s serialized object tree. Count nested properties, dictionary entries, and properties within array elements; ignored members do not count. This is a property limit, not a text-length limit.
 - Reject excessive choices before HTTP submission; never truncate. The exception identifies the option, count, limit, and both remedies:
 
   ```text
   Choice option 2 contains 54 serialized properties; the limit is 20.
-  Use a dedicated smaller POCO or increase JevOptions.MaxChoiceProperties
-  when constructing Jev.
+  Use a dedicated smaller POCO or increase SystemOneOptions.MaxChoiceProperties
+  when constructing SystemOne.
   ```
 
 - Require a positive override. Reject null choices, cyclic graphs, empty choice collections, and more than the documented [255 options](https://docs.typesafe.ai/primitives/choice).
 
 ## Transport and failure handling
 
-- Default to `https://api.typesafe.ai/v1/systemone` and `jev-latest`; allow endpoint/model overrides through `JevOptions`.
-- Support `new Jev(apiKey, options: ..., httpClient: ...)`. Reuse one client; dispose only internally owned clients. Set bearer authentication per request.
+- Default to `https://api.typesafe.ai/v1/systemone` and `jev-latest`; allow endpoint/model overrides through `SystemOneOptions`.
+- Support `new SystemOne(apiKey, options: ..., httpClient: ...)`. Reuse one client; dispose only internally owned clients. Set bearer authentication per request.
 - Route direct methods and batches through one request/response implementation. Pass cancellation through HTTP transmission and response buffering; propagate cancellation unchanged.
 - Validate required inputs, nonempty batches, and at least two Score levels before sending.
-- Throw `JevApiException` with HTTP status and response body for unsuccessful responses. Reject malformed successful responses, missing answers, mismatched answer types, and unknown choice IDs explicitly.
+- Throw `SystemOneApiException` with HTTP status and response body for unsuccessful responses. Reject malformed successful responses, missing answers, mismatched answer types, and unknown choice IDs explicitly.
 - Keep question definitions free of response state. Snapshot inputs at send time; builders are not thread-safe.
 - No blocking methods, automatic retries, caching, or custom transport abstraction in v1.
 

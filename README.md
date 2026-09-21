@@ -1,45 +1,45 @@
-# JevDotNet
+# SystemOneDotNet
 
-A .NET Standard 2.0 client library for the [Jev / TypeSafe System One](https://docs.typesafe.ai) API.
+A .NET Standard 2.0 client library for the [TypeSafe System One](https://docs.typesafe.ai) API. System One is the class of models that Jev belongs to; the default model alias is `jev-latest`.
 
-`JevDotNet` wraps the `POST https://api.typesafe.ai/v1/systemone` endpoint with asynchronous,
+`SystemOneDotNet` wraps the `POST https://api.typesafe.ai/v1/systemone` endpoint with asynchronous,
 cancellable calls, strongly typed questions and answers, and local validation of choice limits.
 
 ## Install
 
 ```bash
-dotnet add package JevDotNet
+dotnet add package SystemOneDotNet
 ```
 
 Or reference the project directly:
 
 ```xml
-<ProjectReference Include="path/to/src/JevDotNet/JevDotNet.csproj" />
+<ProjectReference Include="path/to/src/SystemOneDotNet/SystemOneDotNet.csproj" />
 ```
 
 ## Quick start
 
 ```csharp
-using JevDotNet;
+using SystemOneDotNet;
 
-using var jev = new Jev(apiKey);
+using ISystemOneClient systemOne = new SystemOne(apiKey);
 
 string ticket = "Hi, I've been trying to connect my Stripe account for 3 days and it keeps failing. I'm losing sales. Please help ASAP.";
 
 // Choose one option.
-ChoiceAnswer<string> department = await jev.ChoiceAsync(
+ChoiceAnswer<string> department = await systemOne.ChoiceAsync(
     ticket,
     "Which team should handle this?",
     new[] { "billing", "technical", "sales" });
 
 // Rate the state along an ordered scale.
-ScoreAnswer frustration = await jev.ScoreAsync(
+ScoreAnswer frustration = await systemOne.ScoreAsync(
     ticket,
     "How frustrated is the customer?",
     new[] { "Calm", "Frustrated", "Very angry" });
 
 // Ask a yes/no question.
-NoulAnswer urgent = await jev.NoulAsync(
+NoulAnswer urgent = await systemOne.NoulAsync(
     ticket,
     "Does this message convey urgency?");
 
@@ -51,7 +51,7 @@ Console.WriteLine(urgent.Noul);             // 0.999
 Every method accepts an optional `CancellationToken`:
 
 ```csharp
-var answer = await jev.ChoiceAsync(ticket, "Which team?", teams, cancellationToken: ct);
+var answer = await systemOne.ChoiceAsync(ticket, "Which team?", teams, cancellationToken: ct);
 ```
 
 ## Reusable questions and batches
@@ -72,7 +72,7 @@ var frustration = new Score(
     "How frustrated is the customer?",
     new[] { "Calm", "Frustrated", "Very Angry" });
 
-JevResult result = await jev.Query(ticket)
+SystemOneResult result = await systemOne.Query(ticket)
     .Question(department)
     .Question(urgent)
     .Score(frustration)
@@ -84,7 +84,7 @@ double score = result.Get(frustration).Score;
 double probability = result.Get(urgent).Noul;
 
 // Detailed single-question call:
-ChoiceAnswer<Team> answer = await jev.AskAsync(ticket, department, ct);
+ChoiceAnswer<Team> answer = await systemOne.AskAsync(ticket, department, ct);
 ```
 
 `result.Model` and `result.Usage` (input and output tokens) are available for every batch.
@@ -106,21 +106,21 @@ that was supplied, without requiring equality or dictionary-compatible keys.
 ## Options
 
 ```csharp
-var options = new JevOptions
+var options = new SystemOneOptions
 {
     Endpoint = "https://api.typesafe.ai/v1/systemone", // default
     Model = "jev-latest",                              // default
     MaxChoiceProperties = 20,                          // default
 };
 
-using var jev = new Jev(apiKey, options, httpClient);
+using ISystemOneClient systemOne = new SystemOne(apiKey, options, httpClient);
 ```
 
 * `Endpoint` and `Model` override the API target.
 * `MaxChoiceProperties` limits how many serialized properties a single choice option may contain.
-* `JevOptions` is immutable: the values are validated once when the client is constructed. Use `with`
+* `SystemOneOptions` is immutable: the values are validated once when the client is constructed. Use `with`
   to derive a modified copy, for example `options with { MaxChoiceProperties = 10 }`.
-* A supplied `HttpClient` is reused and never disposed by `Jev`; when none is supplied, `Jev` owns
+* A supplied `HttpClient` is reused and never disposed by `SystemOne`; when none is supplied, `SystemOne` owns
   and disposes its internal client.
 
 ## Choice options and property limits
@@ -135,7 +135,7 @@ var teams = new[]
     new Team { Name = "Technical", Email = "technical@example.com" },
 };
 
-var answer = await jev.ChoiceAsync(ticket, "Which team should handle this?", teams);
+var answer = await systemOne.ChoiceAsync(ticket, "Which team should handle this?", teams);
 ```
 
 The API receives the options as a criteria map with deterministic ids:
@@ -159,8 +159,8 @@ request is sent; options are never truncated. An oversized option produces an ac
 
 ```text
 Choice option 2 contains 54 serialized properties; the limit is 20.
-Use a dedicated smaller POCO or increase JevOptions.MaxChoiceProperties
-when constructing Jev.
+Use a dedicated smaller POCO or increase SystemOneOptions.MaxChoiceProperties
+when constructing SystemOne.
 ```
 
 Named string options are also supported for the criteria dictionary from the TypeSafe quickstart:
@@ -174,54 +174,55 @@ var department = new ChoiceQuestion("department", "Which team should handle this
         ["sales"] = null,
     });
 
-var result = await jev.Query(ticket).Question(department).SendAsync();
+var result = await systemOne.Query(ticket).Question(department).SendAsync();
 string selected = result.Get(department).Choice;
 ```
 
 ## Error handling
 
-* `JevValidationException` — local validation failed and no request was sent: missing or duplicate
+* `SystemOneValidationException` — local validation failed and no request was sent: missing or duplicate
   question ids, empty batches, fewer than two score levels, more than 255 choice options, null or
   cyclic options, or an exceeded property limit.
-* `JevApiException` — the API returned an unsuccessful status code. `StatusCode` and `ResponseBody`
+* `SystemOneApiException` — the API returned an unsuccessful status code. `StatusCode` and `ResponseBody`
   are exposed.
-* `JevProtocolException` — the API returned a successful response that is malformed, missing an
+* `SystemOneProtocolException` — the API returned a successful response that is malformed, missing an
   answer, has a mismatched answer type, or contains an unknown option id.
 * `OperationCanceledException` — cancellation was requested. The original `CancellationToken` is
   propagated unchanged.
 
 The client performs no automatic retries, caching, or blocking calls. A state that cannot be
 serialized to JSON (for example a cyclic object graph) is reported locally as
-`JevValidationException` before any request is sent. To control timeouts, inject an `HttpClient`
+`SystemOneValidationException` before any request is sent. To control timeouts, inject an `HttpClient`
 configured with your own `Timeout`.
 
 ## Runnable sample
 
-[`samples/JevDotNet.Sample`](samples/JevDotNet.Sample/README.md) is a console app that walks through
+[`samples/SystemOneDotNet.Sample`](samples/SystemOneDotNet.Sample/README.md) is a console app that walks through
 the library against the live API: direct calls, structured options, batches, named options,
 validation, and cancellation. It requires an API key:
 
 ```bash
-export JEV_API_KEY="your-key"
-dotnet run --project samples/JevDotNet.Sample            # every scenario
-dotnet run --project samples/JevDotNet.Sample -- batch   # one scenario
+export SYSTEMONE_API_KEY="your-key"
+dotnet run --project samples/SystemOneDotNet.Sample            # every scenario
+dotnet run --project samples/SystemOneDotNet.Sample -- batch   # one scenario
 ```
 
-Set `JEV_MODEL` to override the default model, or pass `--help` to list the scenarios.
+Set `SYSTEMONE_MODEL` to override the default model, or pass `--help` to list the scenarios.
 
 ## Conventions and scope
 
-`JevDotNet` is a standalone client library, not a hosted service, so a few deliberate choices differ
+`SystemOneDotNet` is a standalone client library, not a hosted service, so a few deliberate choices differ
 from service-oriented .NET conventions:
 
-* It targets `netstandard2.0` so older runtimes can consume it. `src/JevDotNet/IsExternalInit.cs`
+* It targets `netstandard2.0` so older runtimes can consume it. `src/SystemOneDotNet/IsExternalInit.cs`
   supplies the marker type that C# records and `init` accessors require on that target.
-* Data shapes are records: answers, token usage, and `JevOptions` are immutable and expose `init`
+* Data shapes are records: answers, token usage, and `SystemOneOptions` are immutable and expose `init`
   properties; questions are immutable records validated at construction.
-* The `Jev` client has no interface in front of it, and there is no DI container, hosted service, or
+* `SystemOne` implements `ISystemOneClient`, so callers can depend on the interface and substitute it in
+  tests. There is no DI container, hosted service, or
   `ILogger` dependency. `HttpClient` is supplied through the constructor instead of
   `IHttpClientFactory`, and the client disposes only the instance it created. Failures surface as
-  the `JevException` hierarchy and callers decide how to log them.
+  the `SystemOneException` hierarchy and callers decide how to log them.
 * Tests use xUnit, AwesomeAssertions, and NSubstitute.
 
 ## Building and verifying
@@ -229,13 +230,13 @@ from service-oriented .NET conventions:
 ```bash
 dotnet build -c Release
 dotnet test
-dotnet run --project tests/JevDotNet.Verification
-dotnet pack src/JevDotNet -c Release
+dotnet run --project tests/SystemOneDotNet.Verification
+dotnet pack src/SystemOneDotNet -c Release
 ```
 
-* `tests/JevDotNet.Tests` contains the unit tests, written with xUnit, AwesomeAssertions, and
+* `tests/SystemOneDotNet.Tests` contains the unit tests, written with xUnit, AwesomeAssertions, and
   NSubstitute.
-* `tests/JevDotNet.Verification` is a small runnable verification program that exercises the library
+* `tests/SystemOneDotNet.Verification` is a small runnable verification program that exercises the library
   through a fake `HttpMessageHandler`, without a test-framework dependency.
 
 ## License
