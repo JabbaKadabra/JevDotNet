@@ -10,19 +10,28 @@
     <AssemblyName>SystemOneDotNet</AssemblyName>
     <RootNamespace>SystemOneDotNet</RootNamespace>
     <Version>1.0.0</Version>
-    <Authors>Daniel</Authors>
+    <Authors>Daniel Eberharter</Authors>
+    <Company>Daniel Eberharter</Company>
+    <Copyright>Copyright (c) 2026 Daniel Eberharter</Copyright>
     <Description>A .NET Standard 2.0 client library for the TypeSafe System One API.</Description>
     <PackageId>SystemOneDotNet</PackageId>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/JabbaKadabra/SystemOne.NET</PackageProjectUrl>
     <RepositoryUrl>https://github.com/JabbaKadabra/SystemOne.NET</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>systemone;typesafe;llm;classification;dotnet</PackageTags>
     <NeutralLanguage>en</NeutralLanguage>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>
