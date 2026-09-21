@@ -223,7 +223,7 @@ Set `SYSTEMONE_MODEL` to override the default model, or pass `--help` to list th
 `SystemOneDotNet` is a standalone client library, not a hosted service, so a few deliberate choices differ
 from service-oriented .NET conventions:
 
-* It targets `netstandard2.0` so older runtimes can consume it. `src/SystemOneDotNet/IsExternalInit.cs`
+* It targets `netstandard2.0` so older runtimes can consume it. `src/SystemOneDotNet/Internal/IsExternalInit.cs`
   supplies the marker type that C# records and `init` accessors require on that target.
 * The public surface is interfaces and records only. `ISystemOneClient`, `ISystemOneQuery`,
   `ISystemOneResult`, and the `IQuestion` family are interfaces with internal implementations; answers,

@@ -21,8 +21,6 @@ internal sealed class SystemOneResult : ISystemOneResult
 
     public SystemOneUsage Usage { get; }
 
-    public IReadOnlyCollection<string> QuestionIds => answers.Keys;
-
     public TAnswer Get<TAnswer>(IQuestion<TAnswer> question)
     {
         Guard.NotNull(question, nameof(question), "Questions must not be null.");
