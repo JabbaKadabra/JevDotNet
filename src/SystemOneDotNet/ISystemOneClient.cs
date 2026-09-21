@@ -1,9 +1,13 @@
+using SystemOneDotNet.Answers;
+using SystemOneDotNet.Questions;
+
 namespace SystemOneDotNet;
 
 /// <summary>
 /// An asynchronous client for the TypeSafe System One API. Implementations are safe to use from multiple
-/// threads and can be reused for any number of requests. <see cref="SystemOne"/> is the default
-/// implementation; depend on this interface to keep callers decoupled from it.
+/// threads and can be reused for any number of requests. Create one with
+/// <see cref="SystemOneClient.Create"/> and depend on this interface to keep callers decoupled from the
+/// implementation.
 /// </summary>
 public interface ISystemOneClient : IDisposable
 {
@@ -25,7 +29,7 @@ public interface ISystemOneClient : IDisposable
     /// </summary>
     /// <param name="state">The content to evaluate: a string, a POCO, or an array.</param>
     /// <returns>A builder that collects questions before the batch is sent.</returns>
-    SystemOneQuery Query(object state);
+    ISystemOneQuery Query(object state);
 
     /// <summary>
     /// Evaluates a choice question against a state.

@@ -3,8 +3,9 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using SystemOneDotNet.Exceptions;
 
-namespace SystemOneDotNet.Internal;
+namespace SystemOneDotNet.Internal.Json;
 
 /// <summary>
 /// Counts the properties in the serialized object tree of a choice option. Nested properties, dictionary

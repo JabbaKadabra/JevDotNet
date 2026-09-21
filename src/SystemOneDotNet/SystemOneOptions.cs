@@ -1,7 +1,7 @@
 namespace SystemOneDotNet;
 
 /// <summary>
-/// Configuration for a <see cref="SystemOne"/> client. Instances are immutable; create one with an object
+/// Configuration for an <see cref="ISystemOneClient"/>. Instances are immutable; create one with an object
 /// initializer and reuse it.
 /// </summary>
 public sealed record SystemOneOptions

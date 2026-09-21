@@ -122,27 +122,27 @@ public static class Scenarios
     private static async Task BatchAsync(ISystemOneClient systemOne, CancellationToken cancellationToken)
     {
         // Reusable questions carry no response state and can be mixed in one batch.
-        var department = new Choice<Team>(
+        var department = Question.Choice<Team>(
             "department",
             "Which team should handle this ticket?",
             SampleData.Teams);
 
-        var urgency = new Noul(
+        var urgency = Question.Noul(
             "urgency",
             "Does this ticket convey urgency?",
             trueDescription: "The customer is blocked or losing money.",
             falseDescription: "The request can wait for the next business day.");
 
-        var frustration = new Score(
+        var frustration = Question.Score(
             "frustration",
             "How frustrated is the customer?",
             new[] { "Calm", "Mildly frustrated", "Frustrated", "Very angry" });
 
-        var churnRisk = new Noul(
+        var churnRisk = Question.Noul(
             "churn_risk",
             "Is the customer at risk of churning?");
 
-        SystemOneResult result = await systemOne.Query(SampleData.ExampleTicket)
+        ISystemOneResult result = await systemOne.Query(SampleData.ExampleTicket)
             .Question(department)
             .Question(urgency)
             .Question(frustration)
@@ -151,7 +151,6 @@ public static class Scenarios
 
         Console.WriteLine($"model       {result.Model}");
         Console.WriteLine($"tokens      {result.Usage.InputTokens} in / {result.Usage.OutputTokens} out");
-        Console.WriteLine($"questions   {string.Join(", ", result.QuestionIds)}");
         Console.WriteLine();
 
         // Answers are read back with the typed question handles used in the batch.
@@ -168,9 +167,9 @@ public static class Scenarios
 
     private static async Task NamedOptionsAsync(ISystemOneClient systemOne, CancellationToken cancellationToken)
     {
-        // ChoiceQuestion matches the criteria dictionary of the TypeSafe quickstart:
+        // Question.NamedChoice matches the criteria dictionary of the TypeSafe quickstart:
         // each key is the value returned for that option, and the value describes it.
-        var department = new ChoiceQuestion(
+        var department = Question.NamedChoice(
             "department",
             "Which team should handle this ticket?",
             new Dictionary<string, string?>
@@ -214,8 +213,8 @@ public static class Scenarios
         try
         {
             await systemOne.Query(ticket)
-                .Noul(new Noul("urgency", "Does this ticket convey urgency?"))
-                .Noul(new Noul("urgency", "Does this ticket convey urgency?"))
+                .Noul(Question.Noul("urgency", "Does this ticket convey urgency?"))
+                .Noul(Question.Noul("urgency", "Does this ticket convey urgency?"))
                 .SendAsync(cancellationToken);
         }
         catch (SystemOneValidationException exception)

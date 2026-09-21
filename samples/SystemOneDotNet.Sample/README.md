@@ -32,8 +32,8 @@ dotnet run --project samples/SystemOneDotNet.Sample -- --help
 | --- | --- |
 | `quickstart` | `ChoiceAsync`, `ScoreAsync`, and `NoulAsync`, plus answer confidences and probability distributions. |
 | `structured-options` | POCO choice options sent as structured criteria, and reading members that were never sent to the model. |
-| `batch` | Reusable `Choice<T>`, `Score`, and `Noul` questions sent in one request, with typed answers, `Model`, and token usage. |
-| `named-options` | `ChoiceQuestion` with named options and descriptions, matching the TypeSafe quickstart. |
+| `batch` | Reusable `Question.Choice<T>`, `Question.Score`, and `Question.Noul` questions sent in one request, with typed answers, `Model`, and token usage. |
+| `named-options` | `Question.NamedChoice` with named options and descriptions, matching the TypeSafe quickstart. |
 | `errors` | Local validation without a request, cancellation, and the API exception types. |
 
 ## Files

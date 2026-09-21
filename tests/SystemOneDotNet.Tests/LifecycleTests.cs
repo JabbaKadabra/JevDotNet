@@ -17,7 +17,7 @@ public sealed class LifecycleTests
         httpClient.SendAsync(Arg.Any<HttpRequestMessage>(), Arg.Any<CancellationToken>())
             .Returns(call => inner.SendAsync(call.Arg<HttpRequestMessage>(), call.Arg<CancellationToken>()));
 
-        var systemOne = new SystemOne("test-key", null, httpClient);
+        var systemOne = SystemOneClient.Create("test-key", null, httpClient);
 
         var answer = await systemOne.NoulAsync("ticket", "Is it urgent?");
         answer.Noul.Should().Be(0.5);
@@ -32,7 +32,7 @@ public sealed class LifecycleTests
     public async Task SystemOne_OwnedHttpClientDisposed_ThrowsOnNextUse()
     {
         var handler = RecordingHandler.Json(ValidResponse);
-        var systemOne = new SystemOne("test-key", null, new HttpClient(handler));
+        var systemOne = SystemOneClient.Create("test-key", null, new HttpClient(handler));
 
         await systemOne.NoulAsync("ticket", "Is it urgent?");
         systemOne.Dispose();
@@ -68,12 +68,12 @@ public sealed class LifecycleTests
         });
         using var systemOne = TestClient.Create(handler);
 
-        var first = systemOne.Query("first").Noul(new Noul("first", "Is it urgent?")).SendAsync();
-        var second = systemOne.Query("second").Noul(new Noul("second", "Is it urgent?")).SendAsync();
+        var first = systemOne.Query("first").Noul(Question.Noul("first", "Is it urgent?")).SendAsync();
+        var second = systemOne.Query("second").Noul(Question.Noul("second", "Is it urgent?")).SendAsync();
         var results = await Task.WhenAll(first, second);
 
-        results[0].Get(new Noul("first", "Is it urgent?")).Noul.Should().Be(0.1);
-        results[1].Get(new Noul("second", "Is it urgent?")).Noul.Should().Be(0.9);
+        results[0].Get(Question.Noul("first", "Is it urgent?")).Noul.Should().Be(0.1);
+        results[1].Get(Question.Noul("second", "Is it urgent?")).Noul.Should().Be(0.9);
         handler.CallCount.Should().Be(2);
     }
 
@@ -107,7 +107,7 @@ public sealed class LifecycleTests
                 return inner.SendAsync(message, call.Arg<CancellationToken>());
             });
 
-        using var systemOne = new SystemOne("secret-key", null, httpClient);
+        using var systemOne = SystemOneClient.Create("secret-key", null, httpClient);
 
         await systemOne.NoulAsync("ticket", "Is it urgent?");
         await systemOne.NoulAsync("ticket", "Is it urgent?");

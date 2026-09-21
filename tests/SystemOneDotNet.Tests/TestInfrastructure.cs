@@ -102,6 +102,6 @@ internal static class TestClient
 {
     public const string ApiKey = "test-key";
 
-    public static SystemOne Create(RecordingHandler handler, SystemOneOptions? options = null) =>
-        new SystemOne(ApiKey, options, new HttpClient(handler));
+    public static ISystemOneClient Create(RecordingHandler handler, SystemOneOptions? options = null) =>
+        SystemOneClient.Create(ApiKey, options, new HttpClient(handler));
 }

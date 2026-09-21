@@ -1,4 +1,4 @@
-namespace SystemOneDotNet.Internal;
+namespace SystemOneDotNet.Internal.Questions;
 
 /// <summary>Implemented by choice questions whose options must respect <see cref="SystemOneOptions.MaxChoiceProperties"/>.</summary>
 internal interface IChoiceQuestionLimits

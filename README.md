@@ -21,8 +21,9 @@ Or reference the project directly:
 
 ```csharp
 using SystemOneDotNet;
+using SystemOneDotNet.Answers;
 
-using ISystemOneClient systemOne = new SystemOne(apiKey);
+using ISystemOneClient systemOne = SystemOneClient.Create(apiKey);
 
 string ticket = "Hi, I've been trying to connect my Stripe account for 3 days and it keeps failing. I'm losing sales. Please help ASAP.";
 
@@ -56,23 +57,26 @@ var answer = await systemOne.ChoiceAsync(ticket, "Which team?", teams, cancellat
 
 ## Reusable questions and batches
 
-Questions are reusable, carry no response state, and can be sent together in one request.
+Questions are created with the `Question` factory, are reusable, carry no response state, and can be
+sent together in one request.
 
 ```csharp
-var department = new Choice<Team>(
+using SystemOneDotNet.Questions;
+
+IChoiceQuestion<Team> department = Question.Choice(
     "department",
     "Which team should handle this?", teams);
 
-var urgent = new Noul(
+INoulQuestion urgent = Question.Noul(
     "is_urgent",
     "Does this message convey urgency?");
 
-var frustration = new Score(
+IScoreQuestion frustration = Question.Score(
     "frustration",
     "How frustrated is the customer?",
     new[] { "Calm", "Frustrated", "Very Angry" });
 
-SystemOneResult result = await systemOne.Query(ticket)
+ISystemOneResult result = await systemOne.Query(ticket)
     .Question(department)
     .Question(urgent)
     .Score(frustration)
@@ -100,8 +104,11 @@ ChoiceAnswer<Team> answer = await systemOne.AskAsync(ticket, department, ct);
 * `NoulAnswer.Noul` is the probability that the answer is yes, from 0 to 1. There is no automatic
   boolean conversion.
 
-Values are mapped back to the original objects, so `Choice<Team>` returns the exact `Team` instance
-that was supplied, without requiring equality or dictionary-compatible keys.
+Values are mapped back to the original objects, so `Question.Choice<Team>` returns the exact `Team`
+instance that was supplied, without requiring equality or dictionary-compatible keys.
+
+Answers live in `SystemOneDotNet.Answers` and are plain records with public constructors, so a test double
+for `ISystemOneClient` can return `new NoulAnswer(0.9)` directly.
 
 ## Options
 
@@ -113,15 +120,15 @@ var options = new SystemOneOptions
     MaxChoiceProperties = 20,                          // default
 };
 
-using ISystemOneClient systemOne = new SystemOne(apiKey, options, httpClient);
+using ISystemOneClient systemOne = SystemOneClient.Create(apiKey, options, httpClient);
 ```
 
 * `Endpoint` and `Model` override the API target.
 * `MaxChoiceProperties` limits how many serialized properties a single choice option may contain.
 * `SystemOneOptions` is immutable: the values are validated once when the client is constructed. Use `with`
   to derive a modified copy, for example `options with { MaxChoiceProperties = 10 }`.
-* A supplied `HttpClient` is reused and never disposed by `SystemOne`; when none is supplied, `SystemOne` owns
-  and disposes its internal client.
+* A supplied `HttpClient` is reused and never disposed by the client; when none is supplied, the client owns
+  and disposes its internal `HttpClient`.
 
 ## Choice options and property limits
 
@@ -160,13 +167,13 @@ request is sent; options are never truncated. An oversized option produces an ac
 ```text
 Choice option 2 contains 54 serialized properties; the limit is 20.
 Use a dedicated smaller POCO or increase SystemOneOptions.MaxChoiceProperties
-when constructing SystemOne.
+when creating the client.
 ```
 
 Named string options are also supported for the criteria dictionary from the TypeSafe quickstart:
 
 ```csharp
-var department = new ChoiceQuestion("department", "Which team should handle this?",
+INamedChoiceQuestion department = Question.NamedChoice("department", "Which team should handle this?",
     new Dictionary<string, string?>
     {
         ["billing"] = "Payment or subscription issues",
@@ -180,9 +187,11 @@ string selected = result.Get(department).Choice;
 
 ## Error handling
 
+All exceptions live in `SystemOneDotNet.Exceptions` and derive from `SystemOneException`.
+
 * `SystemOneValidationException` — local validation failed and no request was sent: missing or duplicate
   question ids, empty batches, fewer than two score levels, more than 255 choice options, null or
-  cyclic options, or an exceeded property limit.
+  cyclic options, an exceeded property limit, or a question that was not created by the `Question` factory.
 * `SystemOneApiException` — the API returned an unsuccessful status code. `StatusCode` and `ResponseBody`
   are exposed.
 * `SystemOneProtocolException` — the API returned a successful response that is malformed, missing an
@@ -216,13 +225,19 @@ from service-oriented .NET conventions:
 
 * It targets `netstandard2.0` so older runtimes can consume it. `src/SystemOneDotNet/IsExternalInit.cs`
   supplies the marker type that C# records and `init` accessors require on that target.
-* Data shapes are records: answers, token usage, and `SystemOneOptions` are immutable and expose `init`
-  properties; questions are immutable records validated at construction.
-* `SystemOne` implements `ISystemOneClient`, so callers can depend on the interface and substitute it in
-  tests. There is no DI container, hosted service, or
-  `ILogger` dependency. `HttpClient` is supplied through the constructor instead of
-  `IHttpClientFactory`, and the client disposes only the instance it created. Failures surface as
-  the `SystemOneException` hierarchy and callers decide how to log them.
+* The public surface is interfaces and records only. `ISystemOneClient`, `ISystemOneQuery`,
+  `ISystemOneResult`, and the `IQuestion` family are interfaces with internal implementations; answers,
+  token usage, and `SystemOneOptions` are immutable records. The two static factories,
+  `SystemOneClient.Create` and `Question`, are the only entry points into the internals, and the
+  exception hierarchy is the only other set of public classes.
+* Namespaces group the surface by role: `SystemOneDotNet` holds the client, batch, result, and options;
+  `SystemOneDotNet.Questions` the question interfaces and factory; `SystemOneDotNet.Answers` the answer
+  records; `SystemOneDotNet.Exceptions` the exception hierarchy. Everything under
+  `SystemOneDotNet.Internal` is an implementation detail.
+* Callers depend on `ISystemOneClient` and can substitute it in tests. There is no DI container, hosted
+  service, or `ILogger` dependency. `HttpClient` is supplied through `SystemOneClient.Create` instead of
+  `IHttpClientFactory`, and the client disposes only the instance it created. Failures surface as the
+  `SystemOneException` hierarchy and callers decide how to log them.
 * Tests use xUnit, AwesomeAssertions, and NSubstitute.
 
 ## Building and verifying

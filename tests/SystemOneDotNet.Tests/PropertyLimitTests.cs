@@ -31,7 +31,7 @@ public sealed class PropertyLimitTests
         exception.Which.Message.Should().Be(
             "Choice option 0 contains 11 serialized properties; the limit is 10.\n" +
             "Use a dedicated smaller POCO or increase SystemOneOptions.MaxChoiceProperties\n" +
-            "when constructing SystemOne.");
+            "when creating the client.");
         handler.CallCount.Should().Be(0);
     }
 

@@ -21,12 +21,12 @@ public sealed class BatchTests
     [Fact]
     public async Task SendAsync_MixedQuestions_ReturnsEveryTypedAnswer()
     {
-        var department = new Choice<Team>(
+        var department = Question.Choice<Team>(
             "department",
             "Which team should handle this?",
             new[] { Team.Billing, Team.Technical, Team.Sales });
-        var urgent = new Noul("is_urgent", "Does this message convey urgency?");
-        var frustration = new Score(
+        var urgent = Question.Noul("is_urgent", "Does this message convey urgency?");
+        var frustration = Question.Score(
             "frustration",
             "How frustrated is the customer?",
             new[] { "Calm", "Frustrated", "Very angry" });
@@ -44,7 +44,6 @@ public sealed class BatchTests
         result.Get(department).Confidence.Should().Be(0.82);
         result.Get(frustration).Score.Should().BeApproximately(1.6, 1e-9);
         result.Get(urgent).Noul.Should().Be(0.92);
-        result.QuestionIds.Should().BeEquivalentTo(new[] { "department", "is_urgent", "frustration" });
 
         var request = handler.Last;
         request.QuestionIds.Should().Equal("department", "is_urgent", "frustration");
@@ -59,9 +58,9 @@ public sealed class BatchTests
         var handler = MixedHandler();
         using var systemOne = TestClient.Create(handler);
 
-        var department = new Choice<Team>("department", "Which team?", new[] { Team.Billing, Team.Technical, Team.Sales });
-        var urgent = new Noul("is_urgent", "Is it urgent?");
-        var frustration = new Score("frustration", "How frustrated?", new[] { "Calm", "Frustrated", "Very angry" });
+        var department = Question.Choice<Team>("department", "Which team?", new[] { Team.Billing, Team.Technical, Team.Sales });
+        var urgent = Question.Noul("is_urgent", "Is it urgent?");
+        var frustration = Question.Score("frustration", "How frustrated?", new[] { "Calm", "Frustrated", "Very angry" });
 
         var result = await systemOne.Query("ticket")
             .Choice(department)
@@ -87,7 +86,7 @@ public sealed class BatchTests
         })));
         using var systemOne = TestClient.Create(handler);
 
-        var department = new ChoiceQuestion("department", "Which team should handle this?", new Dictionary<string, string?>
+        var department = Question.NamedChoice("department", "Which team should handle this?", new Dictionary<string, string?>
         {
             ["billing"] = "Payment or subscription issues",
             ["technical"] = null,
@@ -111,7 +110,7 @@ public sealed class BatchTests
         using var systemOne = TestClient.Create(handler);
 
         await systemOne.Query("ticket")
-            .Noul(new Noul("is_urgent", "Is it urgent?"))
+            .Noul(Question.Noul("is_urgent", "Is it urgent?"))
             .SendAsync();
 
         var questions = handler.Last.Json.GetProperty("questions");
@@ -126,9 +125,9 @@ public sealed class BatchTests
         using var systemOne = TestClient.Create(handler);
 
         var query = systemOne.Query("ticket")
-            .Noul(new Noul("same_id", "Is it urgent?"));
+            .Noul(Question.Noul("same_id", "Is it urgent?"));
 
-        var act = () => query.Noul(new Noul("same_id", "Is it important?"));
+        var act = () => query.Noul(Question.Noul("same_id", "Is it important?"));
 
         act.Should().Throw<SystemOneValidationException>()
             .WithMessage("*'same_id' is already used in this batch*");
@@ -141,7 +140,7 @@ public sealed class BatchTests
         var handler = MixedHandler();
         using var systemOne = TestClient.Create(handler);
 
-        var urgent = new Noul("is_urgent", "Is it urgent?");
+        var urgent = Question.Noul("is_urgent", "Is it urgent?");
         var query = systemOne.Query("ticket").Question(urgent);
 
         var act = () => query.Question(urgent);
@@ -170,8 +169,8 @@ public sealed class BatchTests
         var handler = MixedHandler();
         using var systemOne = TestClient.Create(handler);
 
-        var result = await systemOne.Query("ticket").Noul(new Noul("is_urgent", "Is it urgent?")).SendAsync();
-        var other = new Noul("other", "Is it important?");
+        var result = await systemOne.Query("ticket").Noul(Question.Noul("is_urgent", "Is it urgent?")).SendAsync();
+        var other = Question.Noul("other", "Is it important?");
 
         var act = () => result.Get(other);
 
@@ -185,9 +184,9 @@ public sealed class BatchTests
         var handler = MixedHandler();
         using var systemOne = TestClient.Create(handler);
 
-        var result = await systemOne.Query("ticket").Noul(new Noul("is_urgent", "Is it urgent?")).SendAsync();
+        var result = await systemOne.Query("ticket").Noul(Question.Noul("is_urgent", "Is it urgent?")).SendAsync();
 
-        var act = () => result.Get(new Score("is_urgent", "How frustrated?", new[] { "Calm", "Angry" }));
+        var act = () => result.Get(Question.Score("is_urgent", "How frustrated?", new[] { "Calm", "Angry" }));
 
         act.Should().Throw<SystemOneProtocolException>()
             .WithMessage("*cannot be read as*");

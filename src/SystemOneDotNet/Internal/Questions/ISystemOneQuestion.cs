@@ -1,6 +1,7 @@
 using System.Text.Json;
+using SystemOneDotNet.Questions;
 
-namespace SystemOneDotNet.Internal;
+namespace SystemOneDotNet.Internal.Questions;
 
 /// <summary>The internal contract implemented by every question type that can be sent to the API.</summary>
 internal interface ISystemOneQuestion : IQuestion

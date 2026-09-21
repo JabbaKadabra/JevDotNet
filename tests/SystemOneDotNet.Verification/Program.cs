@@ -82,7 +82,7 @@ var teams = new[]
 await runner.CheckAsync("direct choice request sends auth, model, and question", async () =>
 {
     var handler = FakeHandler.Json(DirectPayload);
-    using var systemOne = new SystemOne("secret-key", null, new HttpClient(handler));
+    using var systemOne = SystemOneClient.Create("secret-key", null, new HttpClient(handler));
 
     var answer = await systemOne.ChoiceAsync("ticket", "Which team should handle this?", teams);
 
@@ -97,12 +97,12 @@ await runner.CheckAsync("direct choice request sends auth, model, and question",
 
 await runner.CheckAsync("mixed batch returns typed answers and metadata", async () =>
 {
-    var department = new Choice<Team>("department", "Which team should handle this?", teams);
-    var urgent = new Noul("is_urgent", "Does this message convey urgency?");
-    var frustration = new Score("frustration", "How frustrated is the customer?", new[] { "Calm", "Frustrated", "Very angry" });
+    var department = Question.Choice<Team>("department", "Which team should handle this?", teams);
+    var urgent = Question.Noul("is_urgent", "Does this message convey urgency?");
+    var frustration = Question.Score("frustration", "How frustrated is the customer?", new[] { "Calm", "Frustrated", "Very angry" });
 
     var handler = FakeHandler.Json(BatchPayload);
-    using var systemOne = new SystemOne("secret-key", null, new HttpClient(handler));
+    using var systemOne = SystemOneClient.Create("secret-key", null, new HttpClient(handler));
 
     var result = await systemOne.Query("ticket")
         .Question(department)
@@ -138,7 +138,7 @@ await runner.CheckAsync("a score answer without probabilities is tolerated", asy
     """;
 
     var handler = FakeHandler.Json(payload);
-    using var systemOne = new SystemOne("secret-key", null, new HttpClient(handler));
+    using var systemOne = SystemOneClient.Create("secret-key", null, new HttpClient(handler));
 
     var answer = await systemOne.ScoreAsync("ticket", "How frustrated?", new[] { "Calm", "Frustrated", "Very angry" });
 
@@ -149,7 +149,7 @@ await runner.CheckAsync("a score answer without probabilities is tolerated", asy
 await runner.CheckAsync("the endpoint and model can be overridden", async () =>
 {
     var handler = FakeHandler.Json(DirectPayload);
-    using var systemOne = new SystemOne("secret-key", new SystemOneOptions
+    using var systemOne = SystemOneClient.Create("secret-key", new SystemOneOptions
     {
         Endpoint = "https://example.test/systemOne",
         Model = "systemOne-2026-01",
@@ -168,7 +168,7 @@ await runner.CheckAsync("the endpoint and model can be overridden", async () =>
 await runner.CheckAsync("returned options keep their reference identity", async () =>
 {
     var handler = FakeHandler.Json(DirectPayload);
-    using var systemOne = new SystemOne("secret-key", null, new HttpClient(handler));
+    using var systemOne = SystemOneClient.Create("secret-key", null, new HttpClient(handler));
 
     var answer = await systemOne.ChoiceAsync("ticket", "Which team?", teams);
 
@@ -191,14 +191,14 @@ await runner.CheckAsync("independent concurrent requests are isolated", async ()
         }
         """);
     });
-    using var systemOne = new SystemOne("secret-key", null, new HttpClient(handler));
+    using var systemOne = SystemOneClient.Create("secret-key", null, new HttpClient(handler));
 
-    var first = systemOne.Query("first").Noul(new Noul("first", "Is it urgent?")).SendAsync();
-    var second = systemOne.Query("second").Noul(new Noul("second", "Is it urgent?")).SendAsync();
+    var first = systemOne.Query("first").Noul(Question.Noul("first", "Is it urgent?")).SendAsync();
+    var second = systemOne.Query("second").Noul(Question.Noul("second", "Is it urgent?")).SendAsync();
     var results = await Task.WhenAll(first, second);
 
-    Expect.Equal(0.1, results[0].Get(new Noul("first", "Is it urgent?")).Noul, "The first request should get its own answer.");
-    Expect.Equal(0.9, results[1].Get(new Noul("second", "Is it urgent?")).Noul, "The second request should get its own answer.");
+    Expect.Equal(0.1, results[0].Get(Question.Noul("first", "Is it urgent?")).Noul, "The first request should get its own answer.");
+    Expect.Equal(0.9, results[1].Get(Question.Noul("second", "Is it urgent?")).Noul, "The second request should get its own answer.");
     Expect.Equal(2, handler.CallCount, "Both requests should reach the API.");
 });
 
@@ -209,7 +209,7 @@ await runner.CheckAsync("independent concurrent requests are isolated", async ()
 await runner.CheckAsync("a choice option with 10 properties is accepted and 11 is rejected", async () =>
 {
     var handler = FakeHandler.Json(SingleChoicePayload);
-    using var systemOne = new SystemOne("secret-key", new SystemOneOptions { MaxChoiceProperties = 10 }, new HttpClient(handler));
+    using var systemOne = SystemOneClient.Create("secret-key", new SystemOneOptions { MaxChoiceProperties = 10 }, new HttpClient(handler));
 
     await systemOne.ChoiceAsync("ticket", "Which option?", new[] { new TenProperties() });
     Expect.Equal(1, handler.CallCount, "The accepted option should be sent.");
@@ -223,7 +223,7 @@ await runner.CheckAsync("a choice option with 10 properties is accepted and 11 i
 await runner.CheckAsync("the property limit error is actionable", async () =>
 {
     var handler = FakeHandler.Json(DirectPayload);
-    using var systemOne = new SystemOne("secret-key", null, new HttpClient(handler));
+    using var systemOne = SystemOneClient.Create("secret-key", null, new HttpClient(handler));
 
     try
     {
@@ -235,7 +235,7 @@ await runner.CheckAsync("the property limit error is actionable", async () =>
         Expect.Equal(
             "Choice option 1 contains 21 serialized properties; the limit is 20.\n" +
             "Use a dedicated smaller POCO or increase SystemOneOptions.MaxChoiceProperties\n" +
-            "when constructing SystemOne.",
+            "when creating the client.",
             exception.Message,
             "The error should identify the option, the count, the limit, and both remedies.");
     }
@@ -244,7 +244,7 @@ await runner.CheckAsync("the property limit error is actionable", async () =>
 await runner.CheckAsync("nested objects and arrays are counted and ignored properties are not", async () =>
 {
     var handler = FakeHandler.Json(SingleChoicePayload);
-    using var systemOne = new SystemOne("secret-key", new SystemOneOptions { MaxChoiceProperties = 10 }, new HttpClient(handler));
+    using var systemOne = SystemOneClient.Create("secret-key", new SystemOneOptions { MaxChoiceProperties = 10 }, new HttpClient(handler));
 
     await systemOne.ChoiceAsync("ticket", "Which option?", new[] { new WithIgnoredProperties() });
 
@@ -270,7 +270,7 @@ await runner.CheckAsync("nested objects and arrays are counted and ignored prope
 await runner.CheckAsync("cancellation before the request is propagated and sends nothing", async () =>
 {
     var handler = FakeHandler.Json(DirectPayload);
-    using var systemOne = new SystemOne("secret-key", null, new HttpClient(handler));
+    using var systemOne = SystemOneClient.Create("secret-key", null, new HttpClient(handler));
     using var cancellation = new CancellationTokenSource();
     cancellation.Cancel();
 
@@ -289,7 +289,7 @@ await runner.CheckAsync("cancellation during HTTP work is propagated unchanged",
         await Task.Delay(Timeout.Infinite, cancellation.Token);
         return FakeHandler.Message("{}");
     });
-    using var systemOne = new SystemOne("secret-key", null, new HttpClient(handler));
+    using var systemOne = SystemOneClient.Create("secret-key", null, new HttpClient(handler));
 
     try
     {
@@ -306,7 +306,7 @@ await runner.CheckAsync("unsuccessful responses throw with status and body", asy
 {
     const string body = """{"error":"invalid api key"}""";
     var handler = FakeHandler.Json(body, HttpStatusCode.Unauthorized);
-    using var systemOne = new SystemOne("bad-key", null, new HttpClient(handler));
+    using var systemOne = SystemOneClient.Create("bad-key", null, new HttpClient(handler));
 
     try
     {
@@ -323,7 +323,7 @@ await runner.CheckAsync("unsuccessful responses throw with status and body", asy
 await runner.CheckAsync("malformed and incomplete responses are rejected", async () =>
 {
     var malformed = FakeHandler.Json("{not json");
-    using (var systemOne = new SystemOne("secret-key", null, new HttpClient(malformed)))
+    using (var systemOne = SystemOneClient.Create("secret-key", null, new HttpClient(malformed)))
     {
         await Expect.ThrowsAsync<SystemOneProtocolException>(
             () => systemOne.NoulAsync("ticket", "Is it urgent?"),
@@ -331,7 +331,7 @@ await runner.CheckAsync("malformed and incomplete responses are rejected", async
     }
 
     var wrongType = FakeHandler.Json("""{"model":"jev-latest","answers":{"noul":{"type":"score","score":1.0}},"usage":{"input_tokens":1,"output_tokens":1}}""");
-    using (var systemOne = new SystemOne("secret-key", null, new HttpClient(wrongType)))
+    using (var systemOne = SystemOneClient.Create("secret-key", null, new HttpClient(wrongType)))
     {
         await Expect.ThrowsAsync<SystemOneProtocolException>(
             () => systemOne.NoulAsync("ticket", "Is it urgent?"),
@@ -339,7 +339,7 @@ await runner.CheckAsync("malformed and incomplete responses are rejected", async
     }
 
     var unknownChoice = FakeHandler.Json("""{"model":"jev-latest","answers":{"choice":{"type":"choice","choice":"9","probabilities":{"0":1.0},"confidence":1.0}},"usage":{"input_tokens":1,"output_tokens":1}}""");
-    using (var systemOne = new SystemOne("secret-key", null, new HttpClient(unknownChoice)))
+    using (var systemOne = SystemOneClient.Create("secret-key", null, new HttpClient(unknownChoice)))
     {
         await Expect.ThrowsAsync<SystemOneProtocolException>(
             () => systemOne.ChoiceAsync("ticket", "Which team?", new[] { "billing" }),
@@ -351,7 +351,7 @@ await runner.CheckAsync("a supplied HTTP client is used and stays alive after di
 {
     var handler = FakeHandler.Json(DirectPayload);
     var httpClient = new HttpClient(handler);
-    var systemOne = new SystemOne("secret-key", null, httpClient);
+    var systemOne = SystemOneClient.Create("secret-key", null, httpClient);
 
     await systemOne.NoulAsync("ticket", "Is it urgent?");
     systemOne.Dispose();
@@ -367,7 +367,7 @@ await runner.CheckAsync("a supplied HTTP client is used and stays alive after di
 await runner.CheckAsync("local validation failures send no request", async () =>
 {
     var handler = FakeHandler.Json(DirectPayload);
-    using var systemOne = new SystemOne("secret-key", null, new HttpClient(handler));
+    using var systemOne = SystemOneClient.Create("secret-key", null, new HttpClient(handler));
 
     await Expect.ThrowsAsync<SystemOneValidationException>(
         () => systemOne.ChoiceAsync("ticket", "Which team?", Array.Empty<string>()),
@@ -379,7 +379,7 @@ await runner.CheckAsync("local validation failures send no request", async () =>
         () => systemOne.Query("ticket").SendAsync(),
         "An empty batch should be rejected.");
     await Expect.ThrowsAsync<SystemOneValidationException>(
-        () => systemOne.Query("ticket").Noul(new Noul("same", "First?")).Noul(new Noul("same", "Second?")).SendAsync(),
+        () => systemOne.Query("ticket").Noul(Question.Noul("same", "First?")).Noul(Question.Noul("same", "Second?")).SendAsync(),
         "Duplicate question ids should be rejected.");
 
     Expect.Equal(0, handler.CallCount, "No invalid request should reach the API.");
@@ -388,7 +388,7 @@ await runner.CheckAsync("local validation failures send no request", async () =>
 await runner.CheckAsync("a disposed client rejects new requests", async () =>
 {
     var handler = FakeHandler.Json(DirectPayload);
-    var systemOne = new SystemOne("secret-key", null, new HttpClient(handler));
+    var systemOne = SystemOneClient.Create("secret-key", null, new HttpClient(handler));
     systemOne.Dispose();
 
     await Expect.ThrowsAsync<ObjectDisposedException>(

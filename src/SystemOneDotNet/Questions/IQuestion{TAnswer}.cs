@@ -1,4 +1,4 @@
-namespace SystemOneDotNet;
+namespace SystemOneDotNet.Questions;
 
 /// <summary>
 /// A question whose answer is of type <typeparamref name="TAnswer"/>.

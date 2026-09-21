@@ -7,8 +7,8 @@ public sealed class ValidationTests
     [Fact]
     public void SystemOne_NullOrEmptyApiKey_Throws()
     {
-        var nullKey = () => new SystemOne(null!);
-        var emptyKey = () => new SystemOne("   ");
+        var nullKey = () => SystemOneClient.Create(null!);
+        var emptyKey = () => SystemOneClient.Create("   ");
 
         nullKey.Should().Throw<ArgumentNullException>().WithParameterName("apiKey");
         emptyKey.Should().Throw<ArgumentException>().WithParameterName("apiKey");
@@ -17,9 +17,9 @@ public sealed class ValidationTests
     [Fact]
     public void SystemOne_InvalidEndpointOptions_Throws()
     {
-        var relative = () => new SystemOne("key", new SystemOneOptions { Endpoint = "/relative" });
-        var otherScheme = () => new SystemOne("key", new SystemOneOptions { Endpoint = "ftp://example.com/systemOne" });
-        var empty = () => new SystemOne("key", new SystemOneOptions { Endpoint = "" });
+        var relative = () => SystemOneClient.Create("key", new SystemOneOptions { Endpoint = "/relative" });
+        var otherScheme = () => SystemOneClient.Create("key", new SystemOneOptions { Endpoint = "ftp://example.com/systemOne" });
+        var empty = () => SystemOneClient.Create("key", new SystemOneOptions { Endpoint = "" });
 
         relative.Should().Throw<ArgumentException>().WithParameterName("options");
         otherScheme.Should().Throw<ArgumentException>().WithParameterName("options");
@@ -29,7 +29,7 @@ public sealed class ValidationTests
     [Fact]
     public void SystemOne_EmptyModelOption_Throws()
     {
-        var act = () => new SystemOne("key", new SystemOneOptions { Model = " " });
+        var act = () => SystemOneClient.Create("key", new SystemOneOptions { Model = " " });
 
         act.Should().Throw<ArgumentException>().WithParameterName("options");
     }
@@ -37,13 +37,13 @@ public sealed class ValidationTests
     [Fact]
     public void ChoiceQuestion_MissingIdInstructionsOrOptions_Throws()
     {
-        var nullId = () => new Choice<string>(null!, "instructions", new[] { "a" });
-        var emptyId = () => new Choice<string>("  ", "instructions", new[] { "a" });
-        var nullInstructions = () => new Choice<string>("id", null!, new[] { "a" });
-        var emptyInstructions = () => new Choice<string>("id", "", new[] { "a" });
-        var nullOptions = () => new Choice<string>("id", "instructions", (IEnumerable<string>)null!);
-        var emptyOptions = () => new Choice<string>("id", "instructions", Array.Empty<string>());
-        var nullOption = () => new Choice<string?>("id", "instructions", new[] { "a", null });
+        var nullId = () => Question.Choice<string>(null!, "instructions", new[] { "a" });
+        var emptyId = () => Question.Choice<string>("  ", "instructions", new[] { "a" });
+        var nullInstructions = () => Question.Choice<string>("id", null!, new[] { "a" });
+        var emptyInstructions = () => Question.Choice<string>("id", "", new[] { "a" });
+        var nullOptions = () => Question.Choice<string>("id", "instructions", (IEnumerable<string>)null!);
+        var emptyOptions = () => Question.Choice<string>("id", "instructions", Array.Empty<string>());
+        var nullOption = () => Question.Choice<string?>("id", "instructions", new[] { "a", null });
 
         nullId.Should().Throw<ArgumentNullException>();
         emptyId.Should().Throw<ArgumentException>();
@@ -59,7 +59,7 @@ public sealed class ValidationTests
     {
         var options = Enumerable.Range(0, 256).Select(index => "option-" + index).ToArray();
 
-        var act = () => new Choice<string>("id", "instructions", options);
+        var act = () => Question.Choice<string>("id", "instructions", options);
 
         act.Should().Throw<SystemOneValidationException>()
             .WithMessage("*defines 256 options; the limit is 255*");
@@ -68,10 +68,10 @@ public sealed class ValidationTests
     [Fact]
     public void ChoiceQuestion_InvalidNamesOrDescriptions_Throws()
     {
-        var nullDictionary = () => new ChoiceQuestion("id", "instructions", (IReadOnlyDictionary<string, string?>)null!);
-        var emptyDictionary = () => new ChoiceQuestion("id", "instructions", new Dictionary<string, string?>());
-        var nullName = () => new ChoiceQuestion("id", "instructions", new[] { new KeyValuePair<string, string?>(null!, "description") });
-        var emptyName = () => new ChoiceQuestion("id", "instructions", new Dictionary<string, string?> { [""] = "description" });
+        var nullDictionary = () => Question.NamedChoice("id", "instructions", (IReadOnlyDictionary<string, string?>)null!);
+        var emptyDictionary = () => Question.NamedChoice("id", "instructions", new Dictionary<string, string?>());
+        var nullName = () => Question.NamedChoice("id", "instructions", new[] { new KeyValuePair<string, string?>(null!, "description") });
+        var emptyName = () => Question.NamedChoice("id", "instructions", new Dictionary<string, string?> { [""] = "description" });
 
         nullDictionary.Should().Throw<ArgumentNullException>();
         emptyDictionary.Should().Throw<SystemOneValidationException>().WithMessage("*at least one option*");
@@ -82,7 +82,7 @@ public sealed class ValidationTests
     [Fact]
     public void ChoiceQuestion_DuplicateNamedOptions_Throws()
     {
-        var act = () => new ChoiceQuestion(
+        var act = () => Question.NamedChoice(
             "id",
             "instructions",
             new[] { new KeyValuePair<string, string?>("billing", null), new KeyValuePair<string, string?>("billing", "again") });
@@ -93,9 +93,9 @@ public sealed class ValidationTests
     [Fact]
     public void ScoreQuestion_FewerThanTwoLevels_Throws()
     {
-        var zero = () => new Score("id", "instructions", Array.Empty<string>());
-        var one = () => new Score("id", "instructions", new[] { "Only one" });
-        var two = () => new Score("id", "instructions", new[] { "One", "Two" });
+        var zero = () => Question.Score("id", "instructions", Array.Empty<string>());
+        var one = () => Question.Score("id", "instructions", new[] { "Only one" });
+        var two = () => Question.Score("id", "instructions", new[] { "One", "Two" });
 
         zero.Should().Throw<SystemOneValidationException>().WithMessage("*at least two levels*");
         one.Should().Throw<SystemOneValidationException>().WithMessage("*defines 1*");
@@ -105,8 +105,8 @@ public sealed class ValidationTests
     [Fact]
     public void ScoreQuestion_NullOrEmptyLevel_Throws()
     {
-        var nullLevel = () => new Score("id", "instructions", new[] { "Calm", null! });
-        var emptyLevel = () => new Score("id", "instructions", new[] { "Calm", " " });
+        var nullLevel = () => Question.Score("id", "instructions", new[] { "Calm", null! });
+        var emptyLevel = () => Question.Score("id", "instructions", new[] { "Calm", " " });
 
         nullLevel.Should().Throw<SystemOneValidationException>().WithMessage("*null level at index 1*");
         emptyLevel.Should().Throw<SystemOneValidationException>().WithMessage("*empty level at index 1*");
@@ -115,8 +115,8 @@ public sealed class ValidationTests
     [Fact]
     public void NoulQuestion_MissingIdOrInstructions_Throws()
     {
-        var nullId = () => new Noul(null!, "instructions");
-        var emptyInstructions = () => new Noul("id", "  ");
+        var nullId = () => Question.Noul(null!, "instructions");
+        var emptyInstructions = () => Question.Noul("id", "  ");
 
         nullId.Should().Throw<ArgumentNullException>();
         emptyInstructions.Should().Throw<ArgumentException>();
@@ -140,6 +140,24 @@ public sealed class ValidationTests
         var act = () => systemOne.Query("ticket").Question<ChoiceAnswer<string>>(null!);
 
         act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Query_ForeignQuestionImplementation_Throws()
+    {
+        using var systemOne = TestClient.Create(RecordingHandler.Json("{}"));
+
+        var act = () => systemOne.Query("ticket").Question(new ForeignQuestion());
+
+        act.Should().Throw<SystemOneValidationException>()
+            .WithMessage("*'foreign'*ForeignQuestion*Question factory*");
+    }
+
+    private sealed class ForeignQuestion : IQuestion<NoulAnswer>
+    {
+        public string Id => "foreign";
+
+        public string Instructions => "Not created by the library.";
     }
 
     [Fact]

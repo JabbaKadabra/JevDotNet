@@ -1,22 +1,24 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using SystemOneDotNet.Internal;
+using SystemOneDotNet.Exceptions;
+using SystemOneDotNet.Internal.Json;
+using SystemOneDotNet.Internal.Questions;
 
-namespace SystemOneDotNet;
+namespace SystemOneDotNet.Internal;
 
-/// <summary>Builds request payloads, sends them, and parses responses.</summary>
+/// <summary>Builds request payloads, sends them over HTTP, and parses responses into results.</summary>
 internal static class SystemOneTransport
 {
     private const int MaxErrorBodyLength = 4096;
 
-    public static async Task<SystemOneResult> SendAsync(
+    public static async Task<ISystemOneResult> SendAsync(
         HttpClient httpClient,
         string apiKey,
         string endpoint,
         string model,
         object state,
-        IReadOnlyList<IQuestion> questions,
+        IReadOnlyList<ISystemOneQuestion> questions,
         CancellationToken cancellationToken)
     {
         var payload = BuildPayload(model, state, questions);
@@ -41,7 +43,7 @@ internal static class SystemOneTransport
         return ParseResponse(body, questions);
     }
 
-    private static string BuildPayload(string model, object state, IReadOnlyList<IQuestion> questions)
+    private static string BuildPayload(string model, object state, IReadOnlyList<ISystemOneQuestion> questions)
     {
         try
         {
@@ -55,7 +57,7 @@ internal static class SystemOneTransport
         }
     }
 
-    private static string BuildRequestBody(string model, object state, IReadOnlyList<IQuestion> questions)
+    private static string BuildRequestBody(string model, object state, IReadOnlyList<ISystemOneQuestion> questions)
     {
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream))
@@ -71,7 +73,7 @@ internal static class SystemOneTransport
             {
                 writer.WritePropertyName(question.Id);
                 writer.WriteStartObject();
-                ((ISystemOneQuestion)question).WriteQuestion(writer);
+                question.WriteQuestion(writer);
                 writer.WriteEndObject();
             }
 
@@ -90,7 +92,7 @@ internal static class SystemOneTransport
         return Encoding.UTF8.GetString(buffer.ToArray());
     }
 
-    private static SystemOneResult ParseResponse(string body, IReadOnlyList<IQuestion> questions)
+    private static ISystemOneResult ParseResponse(string body, IReadOnlyList<ISystemOneQuestion> questions)
     {
         if (string.IsNullOrWhiteSpace(body))
         {
@@ -130,7 +132,7 @@ internal static class SystemOneTransport
                     $"The response is missing an answer for question '{question.Id}'.");
             }
 
-            answers.Add(question.Id, ((ISystemOneQuestion)question).ReadAnswer(answerElement));
+            answers.Add(question.Id, question.ReadAnswer(answerElement));
         }
 
         return new SystemOneResult(model, usage, answers);

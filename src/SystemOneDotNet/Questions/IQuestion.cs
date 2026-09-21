@@ -1,12 +1,11 @@
-namespace SystemOneDotNet;
+namespace SystemOneDotNet.Questions;
 
 /// <summary>
-/// A question that can be evaluated by SystemOne.
+/// A question that can be evaluated by System One.
 /// </summary>
 /// <remarks>
-/// This interface is implemented by the question types shipped with this library
-/// (<see cref="ChoiceQuestion{T}"/>, <see cref="ChoiceQuestion"/>, <see cref="ScoreQuestion"/>,
-/// and <see cref="NoulQuestion"/>). It is not intended to be implemented by user code.
+/// Questions are created with the <see cref="Question"/> factory. The interface is not intended to be
+/// implemented by user code; a batch rejects questions that were not created by this library.
 /// </remarks>
 public interface IQuestion
 {

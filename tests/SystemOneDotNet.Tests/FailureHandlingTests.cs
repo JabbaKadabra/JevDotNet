@@ -8,7 +8,7 @@ public sealed class FailureHandlingTests
 {
     private const string ValidResponse = """{"model":"jev-latest","answers":{"noul":{"type":"noul","noul":0.5}},"usage":{"input_tokens":1,"output_tokens":2}}""";
 
-    private static SystemOne Create(Func<RecordedRequest, HttpResponseMessage> factory) =>
+    private static ISystemOneClient Create(Func<RecordedRequest, HttpResponseMessage> factory) =>
         TestClient.Create(RecordingHandler.Responding(factory));
 
     [Fact]
@@ -306,7 +306,7 @@ public sealed class FailureHandlingTests
         {
             () => systemOne.ChoiceAsync("ticket", "Which team?", Array.Empty<string>()),
             () => systemOne.ScoreAsync("ticket", "How frustrated?", new[] { "Only one level" }),
-            () => systemOne.Query(null!).Noul(new Noul("q", "Is it urgent?")).SendAsync(),
+            () => systemOne.Query(null!).Noul(Question.Noul("q", "Is it urgent?")).SendAsync(),
             () => systemOne.Query("ticket").Question<ChoiceAnswer<string>>(null!).SendAsync(),
             () => systemOne.ChoiceAsync("ticket", "Which team?", new[] { "a", "a" }.AsEnumerable().Concat(new[] { (string)null! })),
         };

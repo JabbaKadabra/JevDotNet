@@ -1,21 +1,16 @@
 using System.Text.Json;
-using SystemOneDotNet.Internal;
+using SystemOneDotNet.Answers;
+using SystemOneDotNet.Internal.Json;
+using SystemOneDotNet.Questions;
 
-namespace SystemOneDotNet;
+namespace SystemOneDotNet.Internal.Questions;
 
 /// <summary>
 /// A noul (yes/no) question. The answer is the probability that the answer is yes.
 /// </summary>
-public record NoulQuestion : IQuestion<NoulAnswer>, ISystemOneQuestion
+internal sealed class NoulQuestion : INoulQuestion, ISystemOneQuestion
 {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="NoulQuestion"/> class.
-    /// </summary>
-    /// <param name="id">The identifier that matches the question with its answer inside a batch.</param>
-    /// <param name="instructions">The yes/no question to evaluate.</param>
-    /// <param name="trueDescription">An optional description of what a yes means.</param>
-    /// <param name="falseDescription">An optional description of what a no means.</param>
-    public NoulQuestion(string id, string instructions, string? trueDescription = null, string? falseDescription = null)
+    public NoulQuestion(string id, string instructions, string? trueDescription, string? falseDescription)
     {
         Id = Guard.Id(id);
         Instructions = Guard.Instructions(instructions);
@@ -23,20 +18,12 @@ public record NoulQuestion : IQuestion<NoulAnswer>, ISystemOneQuestion
         FalseDescription = falseDescription;
     }
 
-    /// <inheritdoc />
     public string Id { get; }
 
-    /// <inheritdoc />
     public string Instructions { get; }
 
-    /// <summary>
-    /// Gets the optional description of what a yes (value near 1) means.
-    /// </summary>
     public string? TrueDescription { get; }
 
-    /// <summary>
-    /// Gets the optional description of what a no (value near 0) means.
-    /// </summary>
     public string? FalseDescription { get; }
 
     void ISystemOneQuestion.WriteQuestion(Utf8JsonWriter writer)

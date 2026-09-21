@@ -209,7 +209,7 @@ public sealed class DirectCallTests
         })));
         using var systemOne = TestClient.Create(handler);
 
-        var question = new Noul(
+        var question = Question.Noul(
             "is_urgent",
             "Does this message convey urgency?",
             trueDescription: "Explicitly time-sensitive",
@@ -225,7 +225,7 @@ public sealed class DirectCallTests
     [Fact]
     public async Task AskAsync_ReusableQuestion_ReturnsTypedAnswer()
     {
-        var department = new Choice<Team>(
+        var department = Question.Choice<Team>(
             "department",
             "Which team should handle this?",
             new[] { Team.Billing, Team.Technical, Team.Sales });
@@ -254,7 +254,7 @@ public sealed class DirectCallTests
             FakeApi.Envelope(new { q = FakeApi.NoulAnswer(0.5) }, model: "systemOne-2026-01", inputTokens: 700, outputTokens: 120)));
         using var systemOne = TestClient.Create(handler);
 
-        var result = await systemOne.Query("ticket").Noul(new Noul("q", "Is it urgent?")).SendAsync();
+        var result = await systemOne.Query("ticket").Noul(Question.Noul("q", "Is it urgent?")).SendAsync();
 
         result.Model.Should().Be("systemOne-2026-01");
         result.Usage.InputTokens.Should().Be(700);
@@ -291,8 +291,8 @@ public sealed class DirectCallTests
         using var systemOne = TestClient.Create(handler);
 
         var query = systemOne.Query("first");
-        await query.Noul(new Noul("q", "Is it urgent?")).SendAsync();
-        await query.Noul(new Noul("q2", "Is it urgent?")).SendAsync();
+        await query.Noul(Question.Noul("q", "Is it urgent?")).SendAsync();
+        await query.Noul(Question.Noul("q2", "Is it urgent?")).SendAsync();
 
         handler.CallCount.Should().Be(2);
         handler.Requests[0].Json.GetProperty("state").GetString().Should().Be("first");

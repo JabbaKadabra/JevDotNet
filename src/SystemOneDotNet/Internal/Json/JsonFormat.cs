@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace SystemOneDotNet.Internal;
+namespace SystemOneDotNet.Internal.Json;
 
 /// <summary>JSON formatting helpers shared by the request writer and the property counter.</summary>
 internal static class JsonFormat

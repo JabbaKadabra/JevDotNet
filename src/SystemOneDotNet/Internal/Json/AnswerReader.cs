@@ -1,12 +1,17 @@
 using System.Globalization;
 using System.Text.Json;
+using SystemOneDotNet.Exceptions;
 
-namespace SystemOneDotNet.Internal;
+namespace SystemOneDotNet.Internal.Json;
 
-/// <summary>Strict readers for the answer elements returned by the API.</summary>
+/// <summary>
+/// Strict readers for the answer elements returned by the API.
+/// </summary>
 internal static class AnswerReader
 {
-    /// <summary>Float tolerance for comparing parsed numbers against their allowed ranges.</summary>
+    /// <summary>
+    /// Float tolerance for comparing parsed numbers against their allowed ranges.
+    /// </summary>
     private const double Tolerance = 1e-6;
 
     public static JsonElement RequireObject(JsonElement element, string questionId)

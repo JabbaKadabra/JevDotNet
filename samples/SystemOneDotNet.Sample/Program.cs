@@ -47,7 +47,7 @@ var options = new SystemOneOptions
     Model = Environment.GetEnvironmentVariable("SYSTEMONE_MODEL") ?? SystemOneOptions.DefaultModel,
 };
 
-using ISystemOneClient systemOne = new SystemOne(apiKey, options);
+using ISystemOneClient systemOne = SystemOneClient.Create(apiKey, options);
 Output.Banner(options.Endpoint, options.Model);
 
 try

@@ -1,22 +1,19 @@
 using System.Globalization;
 using System.Text.Json;
-using SystemOneDotNet.Internal;
+using SystemOneDotNet.Answers;
+using SystemOneDotNet.Exceptions;
+using SystemOneDotNet.Internal.Json;
+using SystemOneDotNet.Questions;
 
-namespace SystemOneDotNet;
+namespace SystemOneDotNet.Internal.Questions;
 
 /// <summary>
 /// A score question that rates the state along an ordered list of level descriptions.
 /// </summary>
-public record ScoreQuestion : IQuestion<ScoreAnswer>, ISystemOneQuestion
+internal sealed class ScoreQuestion : IScoreQuestion, ISystemOneQuestion
 {
     private readonly string[] levels;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ScoreQuestion"/> class.
-    /// </summary>
-    /// <param name="id">The identifier that matches the question with its answer inside a batch.</param>
-    /// <param name="instructions">The question the model answers.</param>
-    /// <param name="levels">The ordered level descriptions. At least two levels are required.</param>
     public ScoreQuestion(string id, string instructions, IEnumerable<string> levels)
     {
         Id = Guard.Id(id);
@@ -46,15 +43,10 @@ public record ScoreQuestion : IQuestion<ScoreAnswer>, ISystemOneQuestion
         }
     }
 
-    /// <inheritdoc />
     public string Id { get; }
 
-    /// <inheritdoc />
     public string Instructions { get; }
 
-    /// <summary>
-    /// Gets the level descriptions, in the order they were supplied.
-    /// </summary>
     public IReadOnlyList<string> Levels => levels;
 
     void ISystemOneQuestion.WriteQuestion(Utf8JsonWriter writer)
