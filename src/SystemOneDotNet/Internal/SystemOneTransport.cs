@@ -162,11 +162,6 @@ internal static class SystemOneTransport
             return tokens;
         }
 
-        if (value.TryGetInt64(out var longTokens) && longTokens >= 0 && longTokens <= int.MaxValue)
-        {
-            return (int)longTokens;
-        }
-
         if (value.TryGetDouble(out var doubleTokens) &&
             doubleTokens >= 0 &&
             doubleTokens <= int.MaxValue &&

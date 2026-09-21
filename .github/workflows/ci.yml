@@ -1,0 +1,94 @@
+name: CI
+
+# Builds the solution, runs the unit tests with coverage thresholds, runs the
+# verification runner, and validates that the library can be packed.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: '**/*.csproj'
+
+      - name: Restore
+        run: dotnet restore SystemOneDotNet.sln
+
+      - name: Build
+        run: dotnet build SystemOneDotNet.sln -c Release --no-restore
+
+      # Coverlet thresholds fail the build when coverage drops below the bar.
+      # %2C escapes the comma inside the MSBuild property value.
+      # Threshold order matches ThresholdType: line then branch.
+      - name: Test with coverage
+        run: >
+          dotnet test SystemOneDotNet.sln
+          -c Release --no-restore
+          -p:CollectCoverage=true
+          -p:CoverletOutputFormat=cobertura
+          -p:CoverletOutput="${{ github.workspace }}/artifacts/coverage/"
+          -p:Threshold=100%2C99
+          -p:ThresholdType=line%2Cbranch
+          -p:ThresholdStat=total
+          --results-directory "${{ github.workspace }}/artifacts/test-results"
+          --logger "trx;LogFileName=test-results.trx"
+          --verbosity normal
+
+      - name: Run verification runner
+        run: dotnet run --project tests/SystemOneDotNet.Verification -c Release --no-build
+
+      - name: Pack package (validation)
+        run: dotnet pack src/SystemOneDotNet/SystemOneDotNet.csproj -c Release --no-build -o artifacts/packages
+
+      - name: Generate coverage report
+        if: always()
+        run: |
+          if [ ! -f artifacts/coverage/coverage.cobertura.xml ]; then
+            echo "No coverage file was produced; skipping the report." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if ! command -v reportgenerator >/dev/null 2>&1; then
+            dotnet tool install --global dotnet-reportgenerator-globaltool --version 5.5.11
+          fi
+
+          reportgenerator \
+            -reports:"$GITHUB_WORKSPACE/artifacts/coverage/coverage.cobertura.xml" \
+            -targetdir:"$GITHUB_WORKSPACE/artifacts/report" \
+            -reporttypes:"Html;MarkdownSummaryGithub;TextSummary"
+          cat "$GITHUB_WORKSPACE/artifacts/report/SummaryGithub.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-and-test-results
+          path: |
+            artifacts/coverage/
+            artifacts/report/
+            artifacts/test-results/
+          if-no-files-found: warn

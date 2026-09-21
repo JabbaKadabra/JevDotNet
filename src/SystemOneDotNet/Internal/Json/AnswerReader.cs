@@ -98,7 +98,6 @@ internal static class AnswerReader
     public static int ParseOptionIndex(string name, int optionCount, string questionId)
     {
         if (!int.TryParse(name, NumberStyles.None, CultureInfo.InvariantCulture, out var index) ||
-            index < 0 ||
             index >= optionCount ||
             !string.Equals(name, index.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal))
         {

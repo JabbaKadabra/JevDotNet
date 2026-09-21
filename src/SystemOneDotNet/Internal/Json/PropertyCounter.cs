@@ -244,9 +244,14 @@ internal static class PropertyCounter
             fieldInfo = field;
         }
 
-        public object? GetValue(object instance) =>
-            propertyInfo is not null
-                ? propertyInfo.GetValue(instance, null)
-                : fieldInfo?.GetValue(instance);
+        public object? GetValue(object instance)
+        {
+            if (propertyInfo is not null)
+            {
+                return propertyInfo.GetValue(instance, null);
+            }
+
+            return fieldInfo!.GetValue(instance);
+        }
     }
 }
